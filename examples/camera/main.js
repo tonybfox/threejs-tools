@@ -11,7 +11,7 @@ const sceneSetup = new SceneSetup({
 })
 
 // Access scene, camera, renderer, and controls from sceneSetup
-let { scene, camera, renderer, controls } = sceneSetup
+let { scene, camera, renderer, controls, updateCamera } = sceneSetup
 
 // Create a more interesting scene using ObjectFactory
 // Ground plane
@@ -121,6 +121,8 @@ class CameraController {
     this.controls.object = newCamera
     this.controls.update()
 
+    updateCamera(newCamera)
+
     return newCamera
   }
 
@@ -140,6 +142,8 @@ class CameraController {
     this.camera = newCamera
     this.controls.object = newCamera
     this.controls.update()
+
+    updateCamera(newCamera)
 
     return newCamera
   }

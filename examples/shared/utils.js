@@ -45,6 +45,8 @@ export class SceneSetup {
     this.setupEventListeners()
 
     this.animate = this.animate.bind(this)
+
+    this.updateCamera = this.updateCamera.bind(this)
   }
 
   setupLighting() {
@@ -75,6 +77,10 @@ export class SceneSetup {
     ground.receiveShadow = true
     this.scene.add(ground)
     return ground
+  }
+
+  updateCamera(newCamera) {
+    this.camera = newCamera
   }
 
   animate(customAnimationCallback) {
