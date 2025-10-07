@@ -1,0 +1,19 @@
+{
+  "name": "threejs-tools",
+  "version": "1.0.0",
+  "description": "",
+  "private": true,
+  "devDependencies": {
+    "@types/three": "^0.180.0",
+    "three": "^0.180.0",
+    "tsup": "^8.5.0",
+    "typescript": "^5.9.3",
+    "vite": "^7.1.9"
+  },
+  "scripts": {
+    "build": "pnpm -r --filter='!threejs-tools-examples' run build",
+    "build:all": "pnpm -r run build",
+    "build:examples": "pnpm --filter=threejs-tools-examples run build",
+    "clean": "pnpm -r run clean"
+  }
+}
