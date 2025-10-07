@@ -1,12 +1,27 @@
 import * as THREE from 'three'
 
+// Define custom event types
+interface InfiniteGridEventMap {
+  subdivisionsChanged: { subdivisions: number }
+  divisionsChanged: { divisions: number }
+  colorChanged: {
+    color: THREE.Color | number
+    colorType: 'color1' | 'color2' | 'fog'
+  }
+  fogChanged: { property: 'near' | 'far'; value: number }
+}
+
 export class InfiniteGrid extends THREE.Object3D {
   subdivisions: number
   divisions: number
   gridMaterial: THREE.ShaderMaterial
+  private eventDispatcher: THREE.EventDispatcher<InfiniteGridEventMap>
 
   constructor(divisions: number = 1, subdivisions: number = 10) {
     super()
+
+    // Create an internal EventDispatcher for custom events
+    this.eventDispatcher = new THREE.EventDispatcher<InfiniteGridEventMap>()
     this.divisions = divisions
     this.subdivisions = subdivisions
 
@@ -88,12 +103,17 @@ export class InfiniteGrid extends THREE.Object3D {
   setSubdivisions(subdivisions: number): void {
     this.subdivisions = subdivisions
     this.gridMaterial.uniforms.uSize1.value = this.divisions / this.subdivisions
+    this.eventDispatcher.dispatchEvent({
+      type: 'subdivisionsChanged',
+      subdivisions,
+    })
   }
 
   setDivisions(divisions: number): void {
     this.divisions = divisions
     this.gridMaterial.uniforms.uSize1.value = this.divisions / this.subdivisions
     this.gridMaterial.uniforms.uSize2.value = this.divisions
+    this.eventDispatcher.dispatchEvent({ type: 'divisionsChanged', divisions })
   }
 
   setColor1(color: THREE.Color | number): void {
@@ -102,6 +122,11 @@ export class InfiniteGrid extends THREE.Object3D {
     } else {
       this.gridMaterial.uniforms.uColor1.value.copy(color)
     }
+    this.eventDispatcher.dispatchEvent({
+      type: 'colorChanged',
+      color,
+      colorType: 'color1',
+    })
   }
 
   setColor2(color: THREE.Color | number): void {
@@ -110,6 +135,11 @@ export class InfiniteGrid extends THREE.Object3D {
     } else {
       this.gridMaterial.uniforms.uColor2.value.copy(color)
     }
+    this.eventDispatcher.dispatchEvent({
+      type: 'colorChanged',
+      color,
+      colorType: 'color2',
+    })
   }
 
   setFogColor(color: THREE.Color | number): void {
@@ -118,13 +148,50 @@ export class InfiniteGrid extends THREE.Object3D {
     } else {
       this.gridMaterial.uniforms.uFogColor.value.copy(color)
     }
+    this.eventDispatcher.dispatchEvent({
+      type: 'colorChanged',
+      color,
+      colorType: 'fog',
+    })
   }
 
   setFogNear(near: number): void {
     this.gridMaterial.uniforms.uFogNear.value = near
+    this.eventDispatcher.dispatchEvent({
+      type: 'fogChanged',
+      property: 'near',
+      value: near,
+    })
   }
 
   setFogFar(far: number): void {
     this.gridMaterial.uniforms.uFogFar.value = far
+    this.eventDispatcher.dispatchEvent({
+      type: 'fogChanged',
+      property: 'far',
+      value: far,
+    })
+  }
+
+  // Custom event listener methods (prefixed to avoid conflicts with Object3D)
+  addGridEventListener<K extends keyof InfiniteGridEventMap>(
+    type: K,
+    listener: (event: InfiniteGridEventMap[K] & { type: K }) => void
+  ): void {
+    this.eventDispatcher.addEventListener(type, listener)
+  }
+
+  removeGridEventListener<K extends keyof InfiniteGridEventMap>(
+    type: K,
+    listener: (event: InfiniteGridEventMap[K] & { type: K }) => void
+  ): void {
+    this.eventDispatcher.removeEventListener(type, listener)
+  }
+
+  hasGridEventListener<K extends keyof InfiniteGridEventMap>(
+    type: K,
+    listener: (event: InfiniteGridEventMap[K] & { type: K }) => void
+  ): boolean {
+    return this.eventDispatcher.hasEventListener(type, listener)
   }
 }

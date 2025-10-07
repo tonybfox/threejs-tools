@@ -14,6 +14,25 @@ const sceneSetup = new SceneSetup({
 const grid = new InfiniteGrid(5, 10)
 sceneSetup.scene.add(grid)
 
+grid.addGridEventListener('divisionsChanged', (event) => {
+  console.log('Divisions changed to:', event.divisions)
+})
+
+// Listen for subdivisions changes
+grid.addGridEventListener('subdivisionsChanged', (event) => {
+  console.log('Subdivisions changed to:', event.subdivisions)
+})
+
+// Listen for color changes
+grid.addGridEventListener('colorChanged', (event) => {
+  console.log(`${event.colorType} color changed to:`, event.color)
+})
+
+// Listen for fog changes
+grid.addGridEventListener('fogChanged', (event) => {
+  console.log(`Fog ${event.property} changed to:`, event.value)
+})
+
 // Add some 3D objects for context using ObjectFactory
 const cube = ObjectFactory.createBox([2, 2, 2], 0x4fc3f7, [0, 1, 0])
 sceneSetup.scene.add(cube)
