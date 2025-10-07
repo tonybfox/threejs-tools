@@ -1,1 +1,1 @@
-export * from './InfiniteGrid';
+export * from './InfiniteGrid'

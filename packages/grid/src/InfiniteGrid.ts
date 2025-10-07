@@ -1,17 +1,17 @@
-import * as THREE from 'three';
+import * as THREE from 'three'
 
 export class InfiniteGrid extends THREE.Object3D {
-  subdivisions: number;
-  divisions: number;
-  gridMaterial: THREE.ShaderMaterial;
+  subdivisions: number
+  divisions: number
+  gridMaterial: THREE.ShaderMaterial
 
   constructor(divisions: number = 1, subdivisions: number = 10) {
-    super();
-    this.divisions = divisions;
-    this.subdivisions = subdivisions;
+    super()
+    this.divisions = divisions
+    this.subdivisions = subdivisions
 
     // Create a custom grid shader material
-    const gridSize = 100;
+    const gridSize = 100
 
     // Create a plane for the grid
     const gridGeometry = new THREE.PlaneGeometry(
@@ -19,7 +19,7 @@ export class InfiniteGrid extends THREE.Object3D {
       gridSize * 2,
       1,
       1
-    );
+    )
 
     // Custom grid shader material
     this.gridMaterial = new THREE.ShaderMaterial({
@@ -75,58 +75,56 @@ export class InfiniteGrid extends THREE.Object3D {
       transparent: true,
       side: THREE.DoubleSide,
       depthWrite: false,
-    });
+    })
 
     // Create the grid mesh
-    const gridMesh = new THREE.Mesh(gridGeometry, this.gridMaterial);
-    gridMesh.renderOrder = -1;
-    gridMesh.rotation.x = -Math.PI / 2;
-    this.add(gridMesh);
+    const gridMesh = new THREE.Mesh(gridGeometry, this.gridMaterial)
+    gridMesh.renderOrder = -1
+    gridMesh.rotation.x = -Math.PI / 2
+    this.add(gridMesh)
     // return gridMesh;
   }
 
   setSubdivisions(subdivisions: number): void {
-    this.subdivisions = subdivisions;
-    this.gridMaterial.uniforms.uSize1.value =
-      this.divisions / this.subdivisions;
+    this.subdivisions = subdivisions
+    this.gridMaterial.uniforms.uSize1.value = this.divisions / this.subdivisions
   }
 
   setDivisions(divisions: number): void {
-    this.divisions = divisions;
-    this.gridMaterial.uniforms.uSize1.value =
-      this.divisions / this.subdivisions;
-    this.gridMaterial.uniforms.uSize2.value = this.divisions;
+    this.divisions = divisions
+    this.gridMaterial.uniforms.uSize1.value = this.divisions / this.subdivisions
+    this.gridMaterial.uniforms.uSize2.value = this.divisions
   }
 
   setColor1(color: THREE.Color | number): void {
     if (typeof color === 'number') {
-      this.gridMaterial.uniforms.uColor1.value.setHex(color);
+      this.gridMaterial.uniforms.uColor1.value.setHex(color)
     } else {
-      this.gridMaterial.uniforms.uColor1.value.copy(color);
+      this.gridMaterial.uniforms.uColor1.value.copy(color)
     }
   }
 
   setColor2(color: THREE.Color | number): void {
     if (typeof color === 'number') {
-      this.gridMaterial.uniforms.uColor2.value.setHex(color);
+      this.gridMaterial.uniforms.uColor2.value.setHex(color)
     } else {
-      this.gridMaterial.uniforms.uColor2.value.copy(color);
+      this.gridMaterial.uniforms.uColor2.value.copy(color)
     }
   }
 
   setFogColor(color: THREE.Color | number): void {
     if (typeof color === 'number') {
-      this.gridMaterial.uniforms.uFogColor.value.setHex(color);
+      this.gridMaterial.uniforms.uFogColor.value.setHex(color)
     } else {
-      this.gridMaterial.uniforms.uFogColor.value.copy(color);
+      this.gridMaterial.uniforms.uFogColor.value.copy(color)
     }
   }
 
   setFogNear(near: number): void {
-    this.gridMaterial.uniforms.uFogNear.value = near;
+    this.gridMaterial.uniforms.uFogNear.value = near
   }
 
   setFogFar(far: number): void {
-    this.gridMaterial.uniforms.uFogFar.value = far;
+    this.gridMaterial.uniforms.uFogFar.value = far
   }
 }
