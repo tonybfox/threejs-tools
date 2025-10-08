@@ -258,7 +258,10 @@ export class UIHelpers {
     slider.min = min
     slider.max = max
     slider.value = value
+    slider.step = (max - min) / 100
     slider.style.width = '100%'
+
+    console.log(slider)
 
     const valueDisplay = document.createElement('span')
     valueDisplay.textContent = value

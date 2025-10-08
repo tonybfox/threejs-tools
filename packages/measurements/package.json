@@ -4,11 +4,21 @@
   "main": "dist/index.js",
   "module": "dist/index.mjs",
   "types": "dist/index.d.ts",
-  "peerDependencies": {
-    "three": ">=0.150.0"
-  },
   "scripts": {
     "build": "tsup src/index.ts --format esm,cjs --dts",
     "clean": "rm -rf dist"
-  }
+  },
+  "peerDependencies": {
+    "three": ">=0.150.0"
+  },
+  "keywords": [
+    "threejs",
+    "three",
+    "measurement",
+    "cad",
+    "3d",
+    "distance",
+    "ruler"
+  ],
+  "description": "A modular measurement utility for Three.js scenes with interactive and programmatic measurement creation"
 }
