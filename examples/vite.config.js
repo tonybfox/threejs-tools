@@ -1,7 +1,15 @@
 import { defineConfig } from 'vite'
+import { resolve } from 'path'
 
 export default defineConfig({
   root: '.',
+  resolve: {
+    alias: {
+      '@tonybfox/threejs-camera': resolve('../packages/camera/src/index.ts'),
+      '@tonybfox/threejs-grid': resolve('../packages/grid/src/index.ts'),
+      '@tonybfox/threejs-measurements': resolve('../packages/measurements/src/index.ts'),
+    }
+  },
   build: {
     outDir: 'dist',
     rollupOptions: {
