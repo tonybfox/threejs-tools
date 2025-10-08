@@ -66,6 +66,9 @@ importers:
       '@tonybfox/threejs-measurements':
         specifier: workspace:*
         version: link:../measurements
+      '@tonybfox/threejs-terrain':
+        specifier: workspace:*
+        version: link:../terrain
       three:
         specifier: '>=0.150.0'
         version: 0.180.0
@@ -77,6 +80,12 @@ importers:
         version: 0.180.0
 
   packages/measurements:
+    dependencies:
+      three:
+        specifier: '>=0.150.0'
+        version: 0.180.0
+
+  packages/terrain:
     dependencies:
       three:
         specifier: '>=0.150.0'
