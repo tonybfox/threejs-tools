@@ -80,7 +80,12 @@ The terrain tool dispatches events for various operations:
 // Data loaded from API
 terrainTool.addEventListener('dataLoaded', (event) => {
   console.log('Terrain data:', event.data)
-  console.log('Elevation range:', event.data.minElevation, '-', event.data.maxElevation)
+  console.log(
+    'Elevation range:',
+    event.data.minElevation,
+    '-',
+    event.data.maxElevation
+  )
 })
 
 // Mesh created and added to scene
@@ -104,7 +109,7 @@ terrainTool.addEventListener('error', (event) => {
 ```javascript
 // Update location
 terrainTool.updateTerrain(
-  { latitude: 40.7128, longitude: -74.0060 }, // New York
+  { latitude: 40.7128, longitude: -74.006 }, // New York
   { width: 3000, depth: 3000 }
 )
 
