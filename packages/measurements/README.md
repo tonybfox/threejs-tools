@@ -9,12 +9,15 @@ A modular measurement utility for Three.js scenes that allows users to measure d
 - Programmatic measurement creation with `addMeasurement(start, end)`
 - Interactive click-based measurement mode
 - Real-time distance calculation and display
+- **Edit mode** - Modify existing measurements by dragging endpoints
 
 🎯 **CAD-Style Interactions**
 
 - Click-to-start and click-to-end workflow
 - ESC to cancel current measurement
 - Visual preview line during measurement creation
+- **Double-click labels to enter edit mode**
+- **Drag edit points with snapping support**
 
 📏 **Advanced Snapping**
 
@@ -28,6 +31,7 @@ A modular measurement utility for Three.js scenes that allows users to measure d
 - Positioned at measurement midpoints
 - Customizable colors and fonts
 - Always rendered on top of 3D objects
+- **Interactive labels with double-click to edit**
 
 📊 **Lifecycle Management**
 
@@ -35,6 +39,7 @@ A modular measurement utility for Three.js scenes that allows users to measure d
 - Remove specific measurements
 - Clear all measurements
 - Export/import measurements as JSON
+- **Edit measurements after creation**
 
 ## Installation
 
@@ -70,7 +75,7 @@ const tool = new MeasurementTool(scene, camera)
 tool.addMeasurement(new THREE.Vector3(0, 0, 0), new THREE.Vector3(2, 0, 3))
 
 // Enable interactive mode
-tool.enableInteraction(renderer.domElement, [groundMesh])
+tool.enableInteraction({ targets: [groundMesh] })
 
 // In your animation loop
 function animate() {
@@ -89,31 +94,109 @@ tool.addEventListener('measurementCreated', (e) => {
 ```typescript
 // Enable interactive measurement mode
 const targetObjects = [mesh1, mesh2, mesh3] // Objects to measure against
-tool.enableInteraction(renderer.domElement, targetObjects)
+tool.enableInteraction({ targets: targetObjects })
 
 // Disable when done
 tool.disableInteraction()
+```
+
+## Edit Mode
+
+The measurement tool includes an edit mode that allows users to modify existing measurements by dragging their endpoints.
+
+### Entering Edit Mode
+
+There are two ways to enter edit mode:
+
+1. **Programmatically** - by calling `enterEditMode()` with a measurement ID or index:
+
+```typescript
+// Enter edit mode by measurement ID
+const measurement = tool.addMeasurement(start, end)
+tool.enterEditMode(measurement.id)
+
+// Or by index
+tool.enterEditMode(0) // Edit the first measurement
+```
+
+2. **Interactively** - by double-clicking on any measurement label:
+
+```typescript
+// Labels are automatically interactive when created
+// Users can simply double-click any label to enter edit mode
+```
+
+### Edit Mode Behavior
+
+When edit mode is active:
+
+- **Orange dots** (edit sprites) appear at the measurement's start and end points
+- Clicking and dragging an edit point:
+  - Hides the dot sprite
+  - Shows the crosshair snap marker
+  - Updates the measurement preview in real-time
+  - Applies snapping if enabled
+- Releasing the mouse button:
+  - Updates the measurement point position
+  - Recalculates the distance
+  - Updates the visual representation
+  - Makes the edit sprites visible again
+
+### Exiting Edit Mode
+
+```typescript
+// Programmatically exit edit mode
+tool.exitEditMode()
+
+// Edit mode also exits automatically when:
+// - Another measurement enters edit mode
+// - Interactive mode is disabled
+// - The tool is disposed
+```
+
+### Edit Mode Events
+
+```typescript
+tool.addEventListener('editModeEntered', (e) => {
+  console.log('Editing measurement:', e.measurement.id)
+})
+
+tool.addEventListener('editModeExited', (e) => {
+  console.log('Stopped editing:', e.measurement.id)
+})
+
+tool.addEventListener('measurementUpdated', (e) => {
+  console.log(
+    'Measurement updated:',
+    e.measurement.id,
+    'New distance:',
+    e.measurement.distance
+  )
+})
 ```
 
 ## Configuration Options
 
 ```typescript
 const tool = new MeasurementTool(scene, camera, {
+  domElement: renderer.domElement,
+  controls,
+})
+
+// Configure defaults that future measurements (and the active interaction session) should use
+tool.setDefaultMeasurementOptions({
   snapEnabled: true,
   snapDistance: 0.05, // world-space threshold
-  previewColor: 0x00ffff, // cyan preview line
+  snapMode: SnapMode.VERTEX,
   lineColor: 0xff0000, // red measurement lines
-  labelColor: 'yellow', // yellow text labels
+  labelColor: '#ffff00', // yellow text labels
   lineWidth: 2,
   fontSize: 16,
   fontFamily: 'Arial, sans-serif',
 })
 
-// Or configure at runtime
-tool.snapEnabled = true
-tool.snapDistance = 0.05
+// Visual-only settings remain properties on the tool
 tool.previewColor = 0x00ffff
-tool.labelColor = 'yellow'
 ```
 
 ## Snapping Modes
@@ -121,10 +204,9 @@ tool.labelColor = 'yellow'
 ```typescript
 import { SnapMode } from '@tonybfox/three-measurements'
 
-tool.snapMode = SnapMode.VERTEX // Snap to nearest vertex
-tool.snapMode = SnapMode.FACE // Snap to face intersections
-tool.snapMode = SnapMode.EDGE // Snap to edges (future)
-tool.snapMode = SnapMode.DISABLED // No snapping
+tool.setDefaultMeasurementOptions({ snapMode: SnapMode.VERTEX })
+tool.setDefaultMeasurementOptions({ snapMode: SnapMode.FACE })
+tool.setDefaultMeasurementOptions({ snapMode: SnapMode.DISABLED })
 ```
 
 ## Event Handling
@@ -154,6 +236,19 @@ tool.addEventListener('ended', () => {
 
 tool.addEventListener('previewUpdated', (e) => {
   console.log('Preview distance:', e.distance)
+})
+
+// Edit mode events
+tool.addEventListener('editModeEntered', (e) => {
+  console.log('Editing:', e.measurement.id)
+})
+
+tool.addEventListener('editModeExited', (e) => {
+  console.log('Stopped editing:', e.measurement.id)
+})
+
+tool.addEventListener('measurementUpdated', (e) => {
+  console.log('Updated:', e.measurement.id, 'Distance:', e.measurement.distance)
 })
 ```
 
@@ -191,13 +286,13 @@ constructor(scene: THREE.Scene, camera: THREE.Camera, options?: MeasurementToolO
 
 ### Methods
 
-#### `addMeasurement(start: THREE.Vector3, end: THREE.Vector3): Measurement`
+#### `addMeasurement(start: THREE.Vector3, end: THREE.Vector3, options?: MeasurementCreationOptions): Measurement`
 
-Creates a new measurement programmatically.
+Creates a new measurement programmatically using world-space positions. Provide `startObject`/`endObject` (and optional local offsets) in `options` when the measurement should follow scene objects over time. Visual styling and snapping behaviour can also be supplied per measurement through `options`.
 
-#### `enableInteraction(domElement: HTMLElement, targets?: THREE.Object3D[]): void`
+#### `enableInteraction(options?: MeasurementCreationOptions): void`
 
-Enables interactive click-based measurement mode.
+Enables interactive click-based measurement mode. You can pass any of the creation options (targets, snapping configuration, line/label styling, `isDynamic`, etc.). Omitted values fall back to the tool's defaults.
 
 #### `disableInteraction(): void`
 
@@ -217,15 +312,31 @@ Removes all measurements from the scene.
 
 #### `getMeasurements(): Measurement[]`
 
-Returns array of all current measurements.
+Returns an array of all current measurements.
+
+#### `enterEditMode(measurementIdOrIndex: string | number): void`
+
+Enters edit mode for a specific measurement. Shows draggable edit sprites at the measurement endpoints. The measurement can be specified by ID (string) or by index (number). Optional snapping targets can be passed as the second argument.
+
+#### `exitEditMode(): void`
+
+Exits the current edit mode and removes edit sprites.
 
 #### `serialize(): MeasurementData[]`
 
-Exports measurements to JSON-serializable format.
+Exports measurements to a JSON-serializable format (including styling and snapping preferences).
 
 #### `deserialize(data: MeasurementData[]): void`
 
 Imports measurements from JSON data.
+
+#### `setDefaultMeasurementOptions(options: Partial<MeasurementCreationOptions>): void`
+
+Updates the defaults used for future measurements and the active interaction session (if one is running).
+
+#### `setDynamicMode(enabled: boolean): void`
+
+Shorthand to toggle the default `isDynamic` flag for interactive measurements.
 
 #### `dispose(): void`
 
@@ -238,11 +349,63 @@ Cleans up all resources and event listeners.
 ```typescript
 interface Measurement {
   id: string
-  start: THREE.Vector3
-  end: THREE.Vector3
+  start: MeasurementPoint
+  end: MeasurementPoint
   line: THREE.Line
-  label: THREE.Sprite
+  label: CSS2DObject
   distance: number
+  options: MeasurementOptions
+}
+```
+
+#### `MeasurementPoint`
+
+```typescript
+interface MeasurementPoint {
+  position: THREE.Vector3
+  anchor?: {
+    object: THREE.Object3D
+    localPosition: THREE.Vector3
+  }
+}
+```
+
+#### `MeasurementOptions`
+
+```typescript
+interface MeasurementOptions {
+  lineColor: number
+  labelColor: string
+  lineWidth: number
+  fontSize: number
+  fontFamily: string
+  snapMode: SnapMode
+  snapEnabled: boolean
+  snapDistance: number
+  targets: THREE.Object3D[]
+  isDynamic: boolean
+}
+```
+
+#### `MeasurementCreationOptions`
+
+```typescript
+interface MeasurementCreationOptions {
+  id?: string
+  targets?: THREE.Object3D[]
+  snapEnabled?: boolean
+  snapDistance?: number
+  snapMode?: SnapMode
+  lineColor?: number
+  labelColor?: string
+  lineWidth?: number
+  fontSize?: number
+  fontFamily?: string
+  isDynamic?: boolean
+  startObject?: THREE.Object3D
+  startLocalPosition?: THREE.Vector3
+  endObject?: THREE.Object3D
+  endLocalPosition?: THREE.Vector3
 }
 ```
 
@@ -251,9 +414,29 @@ interface Measurement {
 ```typescript
 interface MeasurementData {
   id: string
-  start: [number, number, number]
-  end: [number, number, number]
+  start: {
+    position: [number, number, number]
+    anchorObjectId?: string
+    anchorLocalPosition?: [number, number, number]
+  }
+  end: {
+    position: [number, number, number]
+    anchorObjectId?: string
+    anchorLocalPosition?: [number, number, number]
+  }
   distance: number
+  options: {
+    snapMode: SnapMode
+    snapEnabled: boolean
+    snapDistance: number
+    lineColor: number
+    labelColor: string
+    lineWidth: number
+    fontSize: number
+    fontFamily: string
+    isDynamic: boolean
+    targetObjectIds?: string[]
+  }
 }
 ```
 
@@ -261,14 +444,8 @@ interface MeasurementData {
 
 ```typescript
 interface MeasurementToolOptions {
-  snapEnabled?: boolean
-  snapDistance?: number
-  previewColor?: number
-  lineColor?: number
-  labelColor?: string
-  lineWidth?: number
-  fontSize?: number
-  fontFamily?: string
+  domElement?: HTMLElement
+  controls?: { enabled: boolean }
 }
 ```
 
@@ -298,7 +475,14 @@ When interactive mode is enabled:
 - **Left Click**: Place measurement points
 - **Mouse Move**: Preview line follows cursor
 - **ESC Key**: Cancel current measurement
+- **Double-Click Label**: Enter edit mode for that measurement
 - **Target Objects**: Only specified objects can be measured
+
+When in edit mode:
+
+- **Drag Edit Point (orange dot)**: Move measurement endpoint with snapping
+- **Mouse Move while Dragging**: Update measurement preview in real-time
+- **Release Mouse**: Confirm new position and update measurement
 
 ## Performance Notes
 
