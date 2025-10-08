@@ -313,27 +313,6 @@ measurementTool.addMeasurement(
   new THREE.Vector3(2, 1.5, 2) // Top of cube2
 )
 
-measurementTool.addMeasurement(
-  new THREE.Vector3(0, 1.6, 0), // Top of sphere
-  new THREE.Vector3(0, 0, 0) // Center of ground
-)
-
-// Add dynamic measurements that track moving objects
-// Measure distance between two moving cubes (top centers)
-measurementTool.addDynamicMeasurement(
-  cube1, // Start object
-  cube2, // End object
-  new THREE.Vector3(0, 0.5, 0), // Local position on cube1 (top center)
-  new THREE.Vector3(0, 0.5, 0) // Local position on cube2 (top center)
-)
-
-// Measure distance from a static point to the moving sphere
-measurementTool.addMeasurementToObject(
-  new THREE.Vector3(0, 0, 0), // Static ground center
-  sphereObj, // Moving sphere
-  new THREE.Vector3(0, 0, 0) // Local center of sphere
-)
-
 // Measure from moving sphere to moving cube
 measurementTool.addDynamicMeasurement(
   sphereObj, // Moving sphere
