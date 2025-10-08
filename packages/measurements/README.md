@@ -75,7 +75,7 @@ const tool = new MeasurementTool(scene, camera)
 tool.addMeasurement(new THREE.Vector3(0, 0, 0), new THREE.Vector3(2, 0, 3))
 
 // Enable interactive mode
-tool.enableInteraction(renderer.domElement, [groundMesh])
+tool.enableInteraction({ targets: [groundMesh] })
 
 // In your animation loop
 function animate() {
@@ -94,7 +94,7 @@ tool.addEventListener('measurementCreated', (e) => {
 ```typescript
 // Enable interactive measurement mode
 const targetObjects = [mesh1, mesh2, mesh3] // Objects to measure against
-tool.enableInteraction(renderer.domElement, targetObjects)
+tool.enableInteraction({ targets: targetObjects })
 
 // Disable when done
 tool.disableInteraction()
@@ -179,21 +179,24 @@ tool.addEventListener('measurementUpdated', (e) => {
 
 ```typescript
 const tool = new MeasurementTool(scene, camera, {
+  domElement: renderer.domElement,
+  controls,
+})
+
+// Configure defaults that future measurements (and the active interaction session) should use
+tool.setDefaultMeasurementOptions({
   snapEnabled: true,
   snapDistance: 0.05, // world-space threshold
-  previewColor: 0x00ffff, // cyan preview line
+  snapMode: SnapMode.VERTEX,
   lineColor: 0xff0000, // red measurement lines
-  labelColor: 'yellow', // yellow text labels
+  labelColor: '#ffff00', // yellow text labels
   lineWidth: 2,
   fontSize: 16,
   fontFamily: 'Arial, sans-serif',
 })
 
-// Or configure at runtime
-tool.snapEnabled = true
-tool.snapDistance = 0.05
+// Visual-only settings remain properties on the tool
 tool.previewColor = 0x00ffff
-tool.labelColor = 'yellow'
 ```
 
 ## Snapping Modes
@@ -201,10 +204,9 @@ tool.labelColor = 'yellow'
 ```typescript
 import { SnapMode } from '@tonybfox/three-measurements'
 
-tool.snapMode = SnapMode.VERTEX // Snap to nearest vertex
-tool.snapMode = SnapMode.FACE // Snap to face intersections
-tool.snapMode = SnapMode.EDGE // Snap to edges (future)
-tool.snapMode = SnapMode.DISABLED // No snapping
+tool.setDefaultMeasurementOptions({ snapMode: SnapMode.VERTEX })
+tool.setDefaultMeasurementOptions({ snapMode: SnapMode.FACE })
+tool.setDefaultMeasurementOptions({ snapMode: SnapMode.DISABLED })
 ```
 
 ## Event Handling
@@ -284,13 +286,13 @@ constructor(scene: THREE.Scene, camera: THREE.Camera, options?: MeasurementToolO
 
 ### Methods
 
-#### `addMeasurement(start: THREE.Vector3, end: THREE.Vector3): Measurement`
+#### `addMeasurement(start: THREE.Vector3, end: THREE.Vector3, options?: MeasurementCreationOptions): Measurement`
 
-Creates a new measurement programmatically.
+Creates a new measurement programmatically using world-space positions. Provide `startObject`/`endObject` (and optional local offsets) in `options` when the measurement should follow scene objects over time. Visual styling and snapping behaviour can also be supplied per measurement through `options`.
 
-#### `enableInteraction(domElement: HTMLElement, targets?: THREE.Object3D[]): void`
+#### `enableInteraction(options?: MeasurementCreationOptions): void`
 
-Enables interactive click-based measurement mode.
+Enables interactive click-based measurement mode. You can pass any of the creation options (targets, snapping configuration, line/label styling, `isDynamic`, etc.). Omitted values fall back to the tool's defaults.
 
 #### `disableInteraction(): void`
 
@@ -310,11 +312,11 @@ Removes all measurements from the scene.
 
 #### `getMeasurements(): Measurement[]`
 
-Returns array of all current measurements.
+Returns an array of all current measurements.
 
 #### `enterEditMode(measurementIdOrIndex: string | number): void`
 
-Enters edit mode for a specific measurement. Shows draggable edit sprites at the measurement endpoints. The measurement can be specified by ID (string) or by index (number).
+Enters edit mode for a specific measurement. Shows draggable edit sprites at the measurement endpoints. The measurement can be specified by ID (string) or by index (number). Optional snapping targets can be passed as the second argument.
 
 #### `exitEditMode(): void`
 
@@ -322,11 +324,19 @@ Exits the current edit mode and removes edit sprites.
 
 #### `serialize(): MeasurementData[]`
 
-Exports measurements to JSON-serializable format.
+Exports measurements to a JSON-serializable format (including styling and snapping preferences).
 
 #### `deserialize(data: MeasurementData[]): void`
 
 Imports measurements from JSON data.
+
+#### `setDefaultMeasurementOptions(options: Partial<MeasurementCreationOptions>): void`
+
+Updates the defaults used for future measurements and the active interaction session (if one is running).
+
+#### `setDynamicMode(enabled: boolean): void`
+
+Shorthand to toggle the default `isDynamic` flag for interactive measurements.
 
 #### `dispose(): void`
 
@@ -339,11 +349,63 @@ Cleans up all resources and event listeners.
 ```typescript
 interface Measurement {
   id: string
-  start: THREE.Vector3
-  end: THREE.Vector3
+  start: MeasurementPoint
+  end: MeasurementPoint
   line: THREE.Line
-  label: THREE.Sprite
+  label: CSS2DObject
   distance: number
+  options: MeasurementOptions
+}
+```
+
+#### `MeasurementPoint`
+
+```typescript
+interface MeasurementPoint {
+  position: THREE.Vector3
+  anchor?: {
+    object: THREE.Object3D
+    localPosition: THREE.Vector3
+  }
+}
+```
+
+#### `MeasurementOptions`
+
+```typescript
+interface MeasurementOptions {
+  lineColor: number
+  labelColor: string
+  lineWidth: number
+  fontSize: number
+  fontFamily: string
+  snapMode: SnapMode
+  snapEnabled: boolean
+  snapDistance: number
+  targets: THREE.Object3D[]
+  isDynamic: boolean
+}
+```
+
+#### `MeasurementCreationOptions`
+
+```typescript
+interface MeasurementCreationOptions {
+  id?: string
+  targets?: THREE.Object3D[]
+  snapEnabled?: boolean
+  snapDistance?: number
+  snapMode?: SnapMode
+  lineColor?: number
+  labelColor?: string
+  lineWidth?: number
+  fontSize?: number
+  fontFamily?: string
+  isDynamic?: boolean
+  startObject?: THREE.Object3D
+  startLocalPosition?: THREE.Vector3
+  endObject?: THREE.Object3D
+  endLocalPosition?: THREE.Vector3
 }
 ```
 
@@ -352,9 +414,29 @@ interface Measurement {
 ```typescript
 interface MeasurementData {
   id: string
-  start: [number, number, number]
-  end: [number, number, number]
+  start: {
+    position: [number, number, number]
+    anchorObjectId?: string
+    anchorLocalPosition?: [number, number, number]
+  }
+  end: {
+    position: [number, number, number]
+    anchorObjectId?: string
+    anchorLocalPosition?: [number, number, number]
+  }
   distance: number
+  options: {
+    snapMode: SnapMode
+    snapEnabled: boolean
+    snapDistance: number
+    lineColor: number
+    labelColor: string
+    lineWidth: number
+    fontSize: number
+    fontFamily: string
+    isDynamic: boolean
+    targetObjectIds?: string[]
+  }
 }
 ```
 
@@ -362,14 +444,8 @@ interface MeasurementData {
 
 ```typescript
 interface MeasurementToolOptions {
-  snapEnabled?: boolean
-  snapDistance?: number
-  previewColor?: number
-  lineColor?: number
-  labelColor?: string
-  lineWidth?: number
-  fontSize?: number
-  fontFamily?: string
+  domElement?: HTMLElement
+  controls?: { enabled: boolean }
 }
 ```
 
