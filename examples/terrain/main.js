@@ -31,10 +31,18 @@ const terrainTool = new TerrainTool(scene, {
 // Predefined locations
 const locations = {
   lasVegas: { latitude: 36.1699, longitude: -115.1398, name: 'Las Vegas' },
-  grandCanyon: { latitude: 36.0544, longitude: -112.1401, name: 'Grand Canyon' },
+  grandCanyon: {
+    latitude: 36.0544,
+    longitude: -112.1401,
+    name: 'Grand Canyon',
+  },
   mountEverest: { latitude: 27.9881, longitude: 86.925, name: 'Mount Everest' },
   newYork: { latitude: 40.7128, longitude: -74.006, name: 'New York' },
-  sanFrancisco: { latitude: 37.7749, longitude: -122.4194, name: 'San Francisco' },
+  sanFrancisco: {
+    latitude: 37.7749,
+    longitude: -122.4194,
+    name: 'San Francisco',
+  },
 }
 
 // Current settings
