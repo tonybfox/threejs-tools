@@ -502,7 +502,9 @@ export class MeasurementTool extends THREE.EventDispatcher<MeasurementToolEvents
       this.domElement.removeEventListener('mousedown', this.onEditMouseDown)
       this.domElement.removeEventListener('mousemove', this.onEditMouseMove)
       this.domElement.removeEventListener('mouseup', this.onEditMouseUp)
-      this.domElement.style.cursor = this.isInteractive ? 'crosshair' : 'default'
+      this.domElement.style.cursor = this.isInteractive
+        ? 'crosshair'
+        : 'default'
     }
 
     this.isEditMode = false
@@ -1200,14 +1202,26 @@ export class MeasurementTool extends THREE.EventDispatcher<MeasurementToolEvents
 
     // Update the measurement preview
     if (this.editingPoint === 'start') {
-      this.updateMeasurementPreview(snapResult.point, this.editingMeasurement.end.position)
+      this.updateMeasurementPreview(
+        snapResult.point,
+        this.editingMeasurement.end.position
+      )
     } else if (this.editingPoint === 'end') {
-      this.updateMeasurementPreview(this.editingMeasurement.start.position, snapResult.point)
+      this.updateMeasurementPreview(
+        this.editingMeasurement.start.position,
+        snapResult.point
+      )
     }
   }
 
   private onEditMouseUp = (event: MouseEvent): void => {
-    if (!this.isEditMode || !this.isDragging || !this.editingMeasurement || !this.editingPoint) return
+    if (
+      !this.isEditMode ||
+      !this.isDragging ||
+      !this.editingMeasurement ||
+      !this.editingPoint
+    )
+      return
 
     const snapResult = this.getSnapResult(event)
     if (!snapResult) {
@@ -1216,11 +1230,14 @@ export class MeasurementTool extends THREE.EventDispatcher<MeasurementToolEvents
     }
 
     // Update the measurement point
-    const point = this.editingPoint === 'start' ? this.editingMeasurement.start : this.editingMeasurement.end
-    
+    const point =
+      this.editingPoint === 'start'
+        ? this.editingMeasurement.start
+        : this.editingMeasurement.end
+
     // Update position
     point.position.copy(snapResult.point)
-    
+
     // Update dynamic point data if applicable
     if (this.dynamicMode && snapResult.object) {
       const localPos = snapResult.object.worldToLocal(snapResult.point.clone())
@@ -1235,7 +1252,9 @@ export class MeasurementTool extends THREE.EventDispatcher<MeasurementToolEvents
     }
 
     // Update the measurement's isDynamic flag
-    this.editingMeasurement.isDynamic = this.editingMeasurement.start.isDynamic || this.editingMeasurement.end.isDynamic
+    this.editingMeasurement.isDynamic =
+      this.editingMeasurement.start.isDynamic ||
+      this.editingMeasurement.end.isDynamic
 
     // Recalculate distance and update geometry
     const newDistance = this.editingMeasurement.start.position.distanceTo(
@@ -1306,7 +1325,10 @@ export class MeasurementTool extends THREE.EventDispatcher<MeasurementToolEvents
     this.showCursor()
   }
 
-  private updateMeasurementPreview(startPos: THREE.Vector3, endPos: THREE.Vector3): void {
+  private updateMeasurementPreview(
+    startPos: THREE.Vector3,
+    endPos: THREE.Vector3
+  ): void {
     if (!this.editingMeasurement) return
 
     const distance = startPos.distanceTo(endPos)

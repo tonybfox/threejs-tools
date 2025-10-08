@@ -9,12 +9,15 @@ A modular measurement utility for Three.js scenes that allows users to measure d
 - Programmatic measurement creation with `addMeasurement(start, end)`
 - Interactive click-based measurement mode
 - Real-time distance calculation and display
+- **Edit mode** - Modify existing measurements by dragging endpoints
 
 🎯 **CAD-Style Interactions**
 
 - Click-to-start and click-to-end workflow
 - ESC to cancel current measurement
 - Visual preview line during measurement creation
+- **Double-click labels to enter edit mode**
+- **Drag edit points with snapping support**
 
 📏 **Advanced Snapping**
 
@@ -28,6 +31,7 @@ A modular measurement utility for Three.js scenes that allows users to measure d
 - Positioned at measurement midpoints
 - Customizable colors and fonts
 - Always rendered on top of 3D objects
+- **Interactive labels with double-click to edit**
 
 📊 **Lifecycle Management**
 
@@ -35,6 +39,7 @@ A modular measurement utility for Three.js scenes that allows users to measure d
 - Remove specific measurements
 - Clear all measurements
 - Export/import measurements as JSON
+- **Edit measurements after creation**
 
 ## Installation
 
@@ -93,6 +98,81 @@ tool.enableInteraction(renderer.domElement, targetObjects)
 
 // Disable when done
 tool.disableInteraction()
+```
+
+## Edit Mode
+
+The measurement tool includes an edit mode that allows users to modify existing measurements by dragging their endpoints.
+
+### Entering Edit Mode
+
+There are two ways to enter edit mode:
+
+1. **Programmatically** - by calling `enterEditMode()` with a measurement ID or index:
+
+```typescript
+// Enter edit mode by measurement ID
+const measurement = tool.addMeasurement(start, end)
+tool.enterEditMode(measurement.id)
+
+// Or by index
+tool.enterEditMode(0) // Edit the first measurement
+```
+
+2. **Interactively** - by double-clicking on any measurement label:
+
+```typescript
+// Labels are automatically interactive when created
+// Users can simply double-click any label to enter edit mode
+```
+
+### Edit Mode Behavior
+
+When edit mode is active:
+
+- **Orange dots** (edit sprites) appear at the measurement's start and end points
+- Clicking and dragging an edit point:
+  - Hides the dot sprite
+  - Shows the crosshair snap marker
+  - Updates the measurement preview in real-time
+  - Applies snapping if enabled
+- Releasing the mouse button:
+  - Updates the measurement point position
+  - Recalculates the distance
+  - Updates the visual representation
+  - Makes the edit sprites visible again
+
+### Exiting Edit Mode
+
+```typescript
+// Programmatically exit edit mode
+tool.exitEditMode()
+
+// Edit mode also exits automatically when:
+// - Another measurement enters edit mode
+// - Interactive mode is disabled
+// - The tool is disposed
+```
+
+### Edit Mode Events
+
+```typescript
+tool.addEventListener('editModeEntered', (e) => {
+  console.log('Editing measurement:', e.measurement.id)
+})
+
+tool.addEventListener('editModeExited', (e) => {
+  console.log('Stopped editing:', e.measurement.id)
+})
+
+tool.addEventListener('measurementUpdated', (e) => {
+  console.log(
+    'Measurement updated:',
+    e.measurement.id,
+    'New distance:',
+    e.measurement.distance
+  )
+})
 ```
 
 ## Configuration Options
@@ -154,6 +234,19 @@ tool.addEventListener('ended', () => {
 
 tool.addEventListener('previewUpdated', (e) => {
   console.log('Preview distance:', e.distance)
+})
+
+// Edit mode events
+tool.addEventListener('editModeEntered', (e) => {
+  console.log('Editing:', e.measurement.id)
+})
+
+tool.addEventListener('editModeExited', (e) => {
+  console.log('Stopped editing:', e.measurement.id)
+})
+
+tool.addEventListener('measurementUpdated', (e) => {
+  console.log('Updated:', e.measurement.id, 'Distance:', e.measurement.distance)
 })
 ```
 
@@ -218,6 +311,14 @@ Removes all measurements from the scene.
 #### `getMeasurements(): Measurement[]`
 
 Returns array of all current measurements.
+
+#### `enterEditMode(measurementIdOrIndex: string | number): void`
+
+Enters edit mode for a specific measurement. Shows draggable edit sprites at the measurement endpoints. The measurement can be specified by ID (string) or by index (number).
+
+#### `exitEditMode(): void`
+
+Exits the current edit mode and removes edit sprites.
 
 #### `serialize(): MeasurementData[]`
 
@@ -298,7 +399,14 @@ When interactive mode is enabled:
 - **Left Click**: Place measurement points
 - **Mouse Move**: Preview line follows cursor
 - **ESC Key**: Cancel current measurement
+- **Double-Click Label**: Enter edit mode for that measurement
 - **Target Objects**: Only specified objects can be measured
+
+When in edit mode:
+
+- **Drag Edit Point (orange dot)**: Move measurement endpoint with snapping
+- **Mouse Move while Dragging**: Update measurement preview in real-time
+- **Release Mouse**: Confirm new position and update measurement
 
 ## Performance Notes
 

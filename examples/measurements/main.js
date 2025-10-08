@@ -299,7 +299,12 @@ measurementTool.addEventListener('editModeExited', (event) => {
 })
 
 measurementTool.addEventListener('measurementUpdated', (event) => {
-  console.log('Measurement updated:', event.measurement.id, 'New distance:', event.measurement.distance.toFixed(2))
+  console.log(
+    'Measurement updated:',
+    event.measurement.id,
+    'New distance:',
+    event.measurement.distance.toFixed(2)
+  )
   lastMeasurementDiv.textContent = `Updated: ${event.measurement.distance.toFixed(2)}m`
 })
 
