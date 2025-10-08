@@ -123,6 +123,12 @@ export interface MeasurementToolEvents {
     current: THREE.Vector3
     distance: number
   }
+  /** Fired when edit mode is entered */
+  editModeEntered: { measurement: Measurement }
+  /** Fired when edit mode is exited */
+  editModeExited: { measurement: Measurement }
+  /** Fired when a measurement is updated */
+  measurementUpdated: { measurement: Measurement }
 }
 
 /**

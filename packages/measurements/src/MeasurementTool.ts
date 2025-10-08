@@ -73,6 +73,15 @@ export class MeasurementTool extends THREE.EventDispatcher<MeasurementToolEvents
   // Dynamic measurement mode
   private dynamicMode: boolean = false
 
+  // Edit mode properties
+  private isEditMode: boolean = false
+  private editingMeasurement: Measurement | null = null
+  private editingPoint: 'start' | 'end' | null = null
+  private startEditSprite: THREE.Sprite | null = null
+  private endEditSprite: THREE.Sprite | null = null
+  private editSpriteMaterial: THREE.SpriteMaterial | null = null
+  private isDragging: boolean = false
+
   // Materials
   private lineMaterial: THREE.LineBasicMaterial
   private previewMaterial: THREE.LineDashedMaterial
@@ -152,6 +161,41 @@ export class MeasurementTool extends THREE.EventDispatcher<MeasurementToolEvents
     return texture
   }
 
+  /**
+   * Create a dot texture for edit point sprites
+   */
+  private createDotTexture(): THREE.Texture {
+    const size = 64
+    const canvas = document.createElement('canvas')
+    canvas.width = size
+    canvas.height = size
+
+    const context = canvas.getContext('2d')!
+    const centerX = size / 2
+    const centerY = size / 2
+    const radius = 12
+
+    // Clear canvas
+    context.clearRect(0, 0, size, size)
+
+    // Draw white circle
+    context.fillStyle = '#ffffff'
+    context.beginPath()
+    context.arc(centerX, centerY, radius, 0, Math.PI * 2)
+    context.fill()
+
+    // Add black outline
+    context.strokeStyle = '#000000'
+    context.lineWidth = 3
+    context.beginPath()
+    context.arc(centerX, centerY, radius, 0, Math.PI * 2)
+    context.stroke()
+
+    const texture = new THREE.CanvasTexture(canvas)
+    texture.needsUpdate = true
+    return texture
+  }
+
   constructor(
     scene: THREE.Scene,
     camera: THREE.Camera,
@@ -185,6 +229,15 @@ export class MeasurementTool extends THREE.EventDispatcher<MeasurementToolEvents
       opacity: 0.8,
       sizeAttenuation: false, // Keep constant size regardless of distance
       depthTest: false, // Always render in front of other objects
+    })
+
+    this.editSpriteMaterial = new THREE.SpriteMaterial({
+      map: this.createDotTexture(),
+      color: 0xffaa00, // Orange color for edit points
+      transparent: true,
+      opacity: 0.9,
+      sizeAttenuation: false,
+      depthTest: false,
     })
 
     // Set up raycaster
@@ -392,6 +445,80 @@ export class MeasurementTool extends THREE.EventDispatcher<MeasurementToolEvents
   }
 
   /**
+   * Enter edit mode for a specific measurement
+   * Shows edit sprites at the measurement endpoints
+   * @param measurementIdOrIndex - The measurement ID or index
+   */
+  enterEditMode(measurementIdOrIndex: string | number): void {
+    // Exit any current edit mode
+    this.exitEditMode()
+
+    // Find the measurement
+    let measurement: Measurement | undefined
+    if (typeof measurementIdOrIndex === 'string') {
+      measurement = this.measurements.find((m) => m.id === measurementIdOrIndex)
+    } else {
+      measurement = this.measurements[measurementIdOrIndex]
+    }
+
+    if (!measurement) {
+      console.warn('Measurement not found:', measurementIdOrIndex)
+      return
+    }
+
+    this.isEditMode = true
+    this.editingMeasurement = measurement
+
+    // Create edit sprites at the endpoints
+    this.createEditSprites()
+
+    // Set up event listeners for dragging
+    if (this.domElement) {
+      this.domElement.addEventListener('mousedown', this.onEditMouseDown)
+      this.domElement.addEventListener('mousemove', this.onEditMouseMove)
+      this.domElement.addEventListener('mouseup', this.onEditMouseUp)
+      this.domElement.style.cursor = 'pointer'
+    }
+
+    this.dispatchEvent({
+      type: 'editModeEntered',
+      measurement,
+    })
+  }
+
+  /**
+   * Exit edit mode
+   */
+  exitEditMode(): void {
+    if (!this.isEditMode) return
+
+    const measurement = this.editingMeasurement
+
+    // Remove edit sprites
+    this.removeEditSprites()
+
+    // Remove event listeners
+    if (this.domElement) {
+      this.domElement.removeEventListener('mousedown', this.onEditMouseDown)
+      this.domElement.removeEventListener('mousemove', this.onEditMouseMove)
+      this.domElement.removeEventListener('mouseup', this.onEditMouseUp)
+      this.domElement.style.cursor = this.isInteractive ? 'crosshair' : 'default'
+    }
+
+    this.isEditMode = false
+    this.editingMeasurement = null
+    this.editingPoint = null
+    this.isDragging = false
+
+    if (measurement) {
+      this.dispatchEvent({
+        type: 'editModeExited',
+        measurement,
+      })
+    }
+  }
+
+  /**
    * Enable interactive measurement mode
    */
   enableInteraction(
@@ -425,6 +552,9 @@ export class MeasurementTool extends THREE.EventDispatcher<MeasurementToolEvents
    */
   disableInteraction(): void {
     if (!this.isInteractive || !this.domElement) return
+
+    // Exit edit mode if active
+    this.exitEditMode()
 
     // Remove event listeners
     this.domElement.removeEventListener('click', this.onMouseClick)
@@ -554,6 +684,7 @@ export class MeasurementTool extends THREE.EventDispatcher<MeasurementToolEvents
    * Dispose of all resources
    */
   dispose(): void {
+    this.exitEditMode()
     this.disableInteraction()
     this.clearAll()
 
@@ -564,6 +695,13 @@ export class MeasurementTool extends THREE.EventDispatcher<MeasurementToolEvents
       this.markerMaterial.map.dispose()
     }
     this.markerMaterial.dispose()
+
+    if (this.editSpriteMaterial) {
+      if (this.editSpriteMaterial.map) {
+        this.editSpriteMaterial.map.dispose()
+      }
+      this.editSpriteMaterial.dispose()
+    }
   }
 
   // Private methods
@@ -903,10 +1041,11 @@ export class MeasurementTool extends THREE.EventDispatcher<MeasurementToolEvents
       border: '2px solid rgba(255, 255, 255, 0.3)',
       whiteSpace: 'nowrap',
       userSelect: 'none',
-      pointerEvents: 'none',
+      pointerEvents: 'auto', // Enable pointer events for double-click
       boxShadow: '0 2px 8px rgba(0, 0, 0, 0.5)',
       textShadow: '1px 1px 2px rgba(0, 0, 0, 0.8)',
       zIndex: '1000',
+      cursor: 'pointer',
     })
 
     // Update the text content
@@ -914,6 +1053,16 @@ export class MeasurementTool extends THREE.EventDispatcher<MeasurementToolEvents
 
     // Create CSS2DObject
     const css2dObject = new CSS2DObject(labelDiv)
+
+    // Add double-click event listener to enter edit mode
+    labelDiv.addEventListener('dblclick', (event) => {
+      event.stopPropagation()
+      // Find the measurement that owns this label
+      const measurement = this.measurements.find((m) => m.label === css2dObject)
+      if (measurement) {
+        this.enterEditMode(measurement.id)
+      }
+    })
 
     return css2dObject
   }
@@ -954,5 +1103,222 @@ export class MeasurementTool extends THREE.EventDispatcher<MeasurementToolEvents
 
   private generateId(): string {
     return `measurement_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+  }
+
+  // Edit mode helper methods
+
+  private createEditSprites(): void {
+    if (!this.editingMeasurement || !this.editSpriteMaterial) return
+
+    const measurement = this.editingMeasurement
+
+    // Create start point sprite
+    this.startEditSprite = new THREE.Sprite(this.editSpriteMaterial.clone())
+    this.startEditSprite.position.copy(measurement.start.position)
+    this.startEditSprite.scale.set(this.markerSize, this.markerSize, 1)
+    this.startEditSprite.userData.editPoint = 'start'
+    this.scene.add(this.startEditSprite)
+
+    // Create end point sprite
+    this.endEditSprite = new THREE.Sprite(this.editSpriteMaterial.clone())
+    this.endEditSprite.position.copy(measurement.end.position)
+    this.endEditSprite.scale.set(this.markerSize, this.markerSize, 1)
+    this.endEditSprite.userData.editPoint = 'end'
+    this.scene.add(this.endEditSprite)
+  }
+
+  private removeEditSprites(): void {
+    if (this.startEditSprite) {
+      this.scene.remove(this.startEditSprite)
+      if (this.startEditSprite.material instanceof THREE.Material) {
+        this.startEditSprite.material.dispose()
+      }
+      this.startEditSprite = null
+    }
+
+    if (this.endEditSprite) {
+      this.scene.remove(this.endEditSprite)
+      if (this.endEditSprite.material instanceof THREE.Material) {
+        this.endEditSprite.material.dispose()
+      }
+      this.endEditSprite = null
+    }
+  }
+
+  private onEditMouseDown = (event: MouseEvent): void => {
+    if (!this.isEditMode || !this.domElement) return
+
+    const mouse = new THREE.Vector2()
+    const rect = this.domElement.getBoundingClientRect()
+
+    mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1
+    mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1
+
+    this.raycaster.setFromCamera(mouse, this.camera)
+
+    // Check if clicking on edit sprites
+    const sprites = [this.startEditSprite, this.endEditSprite].filter(
+      (s) => s !== null
+    ) as THREE.Sprite[]
+    const spriteIntersects = this.raycaster.intersectObjects(sprites)
+
+    if (spriteIntersects.length > 0) {
+      const sprite = spriteIntersects[0].object
+      this.editingPoint = sprite.userData.editPoint as 'start' | 'end'
+      this.isDragging = true
+
+      // Hide the edit sprite being dragged and show crosshair marker
+      if (this.editingPoint === 'start' && this.startEditSprite) {
+        this.startEditSprite.visible = false
+      } else if (this.editingPoint === 'end' && this.endEditSprite) {
+        this.endEditSprite.visible = false
+      }
+
+      // Show snap marker
+      this.createSnapMarker()
+      if (this.snapMarker) {
+        this.snapMarker.position.copy(sprite.position)
+        this.snapMarker.visible = true
+      }
+
+      // Hide cursor
+      this.hideCursor()
+    }
+  }
+
+  private onEditMouseMove = (event: MouseEvent): void => {
+    if (!this.isEditMode || !this.isDragging || !this.editingMeasurement) return
+
+    const snapResult = this.getSnapResult(event)
+    if (!snapResult) return
+
+    // Update snap marker position
+    if (this.snapMarker) {
+      this.snapMarker.position.copy(snapResult.point)
+      this.snapMarker.visible = this.markerVisible
+    }
+
+    // Update the measurement preview
+    if (this.editingPoint === 'start') {
+      this.updateMeasurementPreview(snapResult.point, this.editingMeasurement.end.position)
+    } else if (this.editingPoint === 'end') {
+      this.updateMeasurementPreview(this.editingMeasurement.start.position, snapResult.point)
+    }
+  }
+
+  private onEditMouseUp = (event: MouseEvent): void => {
+    if (!this.isEditMode || !this.isDragging || !this.editingMeasurement || !this.editingPoint) return
+
+    const snapResult = this.getSnapResult(event)
+    if (!snapResult) {
+      this.cancelEdit()
+      return
+    }
+
+    // Update the measurement point
+    const point = this.editingPoint === 'start' ? this.editingMeasurement.start : this.editingMeasurement.end
+    
+    // Update position
+    point.position.copy(snapResult.point)
+    
+    // Update dynamic point data if applicable
+    if (this.dynamicMode && snapResult.object) {
+      const localPos = snapResult.object.worldToLocal(snapResult.point.clone())
+      point.sourceObject = snapResult.object
+      point.localPosition = localPos
+      point.isDynamic = true
+    } else {
+      // Make it static
+      point.sourceObject = undefined
+      point.localPosition = undefined
+      point.isDynamic = false
+    }
+
+    // Update the measurement's isDynamic flag
+    this.editingMeasurement.isDynamic = this.editingMeasurement.start.isDynamic || this.editingMeasurement.end.isDynamic
+
+    // Recalculate distance and update geometry
+    const newDistance = this.editingMeasurement.start.position.distanceTo(
+      this.editingMeasurement.end.position
+    )
+    this.editingMeasurement.distance = newDistance
+
+    // Update line geometry
+    const positions = [
+      this.editingMeasurement.start.position,
+      this.editingMeasurement.end.position,
+    ]
+    this.editingMeasurement.line.geometry.setFromPoints(positions)
+    this.editingMeasurement.line.geometry.attributes.position.needsUpdate = true
+
+    // Update label position and text
+    const midpoint = this.editingMeasurement.start.position
+      .clone()
+      .add(this.editingMeasurement.end.position)
+      .multiplyScalar(0.5)
+    this.editingMeasurement.label.position.copy(midpoint)
+    this.updateLabelText(this.editingMeasurement.label.element, newDistance)
+
+    // Update edit sprite positions
+    if (this.startEditSprite) {
+      this.startEditSprite.position.copy(this.editingMeasurement.start.position)
+      this.startEditSprite.visible = true
+    }
+    if (this.endEditSprite) {
+      this.endEditSprite.position.copy(this.editingMeasurement.end.position)
+      this.endEditSprite.visible = true
+    }
+
+    // Remove snap marker
+    this.removeSnapMarker()
+
+    // Show cursor
+    this.showCursor()
+
+    // Dispatch update event
+    this.dispatchEvent({
+      type: 'measurementUpdated',
+      measurement: this.editingMeasurement,
+    })
+
+    // Reset dragging state
+    this.isDragging = false
+    this.editingPoint = null
+  }
+
+  private cancelEdit(): void {
+    // Reset dragging state
+    this.isDragging = false
+    this.editingPoint = null
+
+    // Show edit sprites
+    if (this.startEditSprite) {
+      this.startEditSprite.visible = true
+    }
+    if (this.endEditSprite) {
+      this.endEditSprite.visible = true
+    }
+
+    // Remove snap marker
+    this.removeSnapMarker()
+
+    // Show cursor
+    this.showCursor()
+  }
+
+  private updateMeasurementPreview(startPos: THREE.Vector3, endPos: THREE.Vector3): void {
+    if (!this.editingMeasurement) return
+
+    const distance = startPos.distanceTo(endPos)
+
+    // Update line geometry
+    const positions = [startPos, endPos]
+    this.editingMeasurement.line.geometry.setFromPoints(positions)
+    this.editingMeasurement.line.geometry.attributes.position.needsUpdate = true
+
+    // Update label position and text
+    const midpoint = startPos.clone().add(endPos).multiplyScalar(0.5)
+    this.editingMeasurement.label.position.copy(midpoint)
+    this.updateLabelText(this.editingMeasurement.label.element, distance)
   }
 }

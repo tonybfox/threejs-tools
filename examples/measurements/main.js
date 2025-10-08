@@ -21,7 +21,7 @@ css2dRenderer.setSize(window.innerWidth, window.innerHeight)
 css2dRenderer.domElement.style.position = 'absolute'
 css2dRenderer.domElement.style.top = '0'
 css2dRenderer.domElement.style.left = '0'
-css2dRenderer.domElement.style.pointerEvents = 'none'
+css2dRenderer.domElement.style.pointerEvents = 'none' // Container is non-interactive, but labels have pointerEvents: 'auto'
 document.body.appendChild(css2dRenderer.domElement)
 
 // Handle window resize for CSS2DRenderer
@@ -107,6 +107,18 @@ const clearButton = UIHelpers.createButton(
     measurementTool.clearAll()
   },
   'danger'
+)
+
+const editButton = UIHelpers.createButton(
+  'Edit Last',
+  () => {
+    const measurements = measurementTool.getMeasurements()
+    if (measurements.length > 0) {
+      const lastMeasurement = measurements[measurements.length - 1]
+      measurementTool.enterEditMode(lastMeasurement.id)
+    }
+  },
+  'secondary'
 )
 
 const exportButton = UIHelpers.createButton(
@@ -203,6 +215,7 @@ let isDynamicMode = false
 controlPanel.appendChild(toggleButton)
 controlPanel.appendChild(undoButton)
 controlPanel.appendChild(clearButton)
+controlPanel.appendChild(editButton)
 controlPanel.appendChild(exportButton)
 controlPanel.appendChild(importButton)
 controlPanel.appendChild(snapContainer)
@@ -235,7 +248,8 @@ helpDiv.style.color = '#ccc'
 helpDiv.innerHTML =
   'Click on objects to measure distances.<br />' +
   'Toggle Dynamic mode to track moving objects.<br />' +
-  'ESC to cancel current measurement.'
+  'ESC to cancel current measurement.<br />' +
+  '<strong>Double-click on a label to edit it!</strong>'
 
 infoPanel.appendChild(measurementCountDiv)
 infoPanel.appendChild(currentModeDiv)
@@ -272,6 +286,21 @@ measurementTool.addEventListener('ended', () => {
 measurementTool.addEventListener('previewUpdated', (event) => {
   // Optional: Show live distance during measurement
   // Could display in a tooltip or status bar
+})
+
+measurementTool.addEventListener('editModeEntered', (event) => {
+  currentModeSpan.textContent = 'Editing'
+  console.log('Edit mode entered for measurement:', event.measurement.id)
+})
+
+measurementTool.addEventListener('editModeExited', (event) => {
+  currentModeSpan.textContent = isMeasuring ? 'Measuring' : 'Viewing'
+  console.log('Edit mode exited for measurement:', event.measurement.id)
+})
+
+measurementTool.addEventListener('measurementUpdated', (event) => {
+  console.log('Measurement updated:', event.measurement.id, 'New distance:', event.measurement.distance.toFixed(2))
+  lastMeasurementDiv.textContent = `Updated: ${event.measurement.distance.toFixed(2)}m`
 })
 
 // Additional event handlers for checkbox and file input
