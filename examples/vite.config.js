@@ -10,6 +10,9 @@ export default defineConfig({
       '@tonybfox/threejs-measurements': resolve(
         '../packages/measurements/src/index.ts'
       ),
+      '@tonybfox/threejs-asset-loader': resolve(
+        '../packages/asset-loader/src/index.ts'
+      ),
     },
   },
   build: {
@@ -20,6 +23,7 @@ export default defineConfig({
         camera: './camera/index.html',
         grid: './grid/index.html',
         measurements: './measurements/index.html',
+        assetLoader: './asset-loader/index.html',
       },
     },
   },
