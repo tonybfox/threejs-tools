@@ -7,6 +7,7 @@ A collection of utilities and tools for Three.js development, organized as a mon
 - **[@tonybfox/threejs-camera](./packages/camera/)** - Camera utilities and controls
 - **[@tonybfox/threejs-grid](./packages/grid/)** - Infinite grid component
 - **[@tonybfox/threejs-measurements](./packages/measurements/)** - Measurement tools for 3D scenes
+- **[@tonybfox/threejs-asset-loader](./packages/asset-loader/)** - Universal asset loader with progress tracking and caching
 
 ## 🛠️ Prerequisites
 
@@ -140,6 +141,18 @@ pnpm preview
   - Unit switching (meters/feet)
   - Interactive labels
 - **Usage:** Select a tool and click in the 3D scene to measure
+
+### 📦 Asset Loader Package Example
+
+- **Location:** `/examples/asset-loader/`
+- **Features:**
+  - Universal loader for GLTF, FBX, and OBJ formats
+  - Visual placeholder with shader fill effect
+  - Real-time progress tracking
+  - Asset caching for performance
+  - Optional low-res model loading
+  - Event-driven architecture
+- **Usage:** Use the control panel to create placeholders and see the loading system in action
 
 ### 🎮 Interactive Features
 

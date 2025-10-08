@@ -136,7 +136,10 @@ export class AssetLoader extends THREE.EventDispatcher<AssetLoaderEventMap> {
         placeholderColor,
         placeholderOpacity
       )
-      this.dispatchEvent({ type: 'placeholderCreated', placeholder: this.placeholder })
+      this.dispatchEvent({
+        type: 'placeholderCreated',
+        placeholder: this.placeholder,
+      })
     }
 
     try {

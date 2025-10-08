@@ -67,7 +67,7 @@ assetLoader.addEventListener('loaded', (event) => {
   }
   currentAsset = event.asset
   scene.add(currentAsset)
-  
+
   // Remove placeholder after loading
   if (currentPlaceholder) {
     scene.remove(currentPlaceholder)
@@ -137,10 +137,12 @@ function updateStatusUI(message) {
 
 // Placeholder demo section
 const placeholderSection = document.createElement('div')
-placeholderSection.style.cssText = 'margin: 20px 0; padding-top: 15px; border-top: 1px solid rgba(255,255,255,0.1);'
+placeholderSection.style.cssText =
+  'margin: 20px 0; padding-top: 15px; border-top: 1px solid rgba(255,255,255,0.1);'
 const placeholderTitle = document.createElement('div')
 placeholderTitle.textContent = 'Placeholder Demo'
-placeholderTitle.style.cssText = 'font-weight: bold; margin-bottom: 10px; color: #3b82f6;'
+placeholderTitle.style.cssText =
+  'font-weight: bold; margin-bottom: 10px; color: #3b82f6;'
 placeholderSection.appendChild(placeholderTitle)
 
 // Size controls for placeholder
@@ -169,7 +171,7 @@ const createPlaceholderBtn = UIHelpers.createButton(
     if (currentPlaceholder) {
       scene.remove(currentPlaceholder)
     }
-    
+
     const placeholder = assetLoader['createPlaceholder'](
       [currentPlaceholderSize, currentPlaceholderSize, currentPlaceholderSize],
       0x4fc3f7,
@@ -192,28 +194,28 @@ const animateFillBtn = UIHelpers.createButton(
       updateStatusUI('Create a placeholder first!')
       return
     }
-    
+
     if (fillAnimation) {
       cancelAnimationFrame(fillAnimation)
       fillAnimation = null
       animateFillBtn.textContent = 'Animate Fill'
       return
     }
-    
+
     animateFillBtn.textContent = 'Stop Animation'
     let progress = 0
-    
+
     const animate = () => {
       progress += 0.005
       if (progress > 1) progress = 0
-      
+
       if (currentPlaceholder && currentPlaceholder instanceof THREE.Mesh) {
         const material = currentPlaceholder.material
         if (material.uniforms && material.uniforms.fillProgress) {
           material.uniforms.fillProgress.value = progress
         }
       }
-      
+
       fillAnimation = requestAnimationFrame(animate)
     }
     animate()
@@ -226,14 +228,17 @@ controlPanel.appendChild(placeholderSection)
 
 // Model type selection
 const modelSection = document.createElement('div')
-modelSection.style.cssText = 'margin: 20px 0; padding-top: 15px; border-top: 1px solid rgba(255,255,255,0.1);'
+modelSection.style.cssText =
+  'margin: 20px 0; padding-top: 15px; border-top: 1px solid rgba(255,255,255,0.1);'
 const modelTitle = document.createElement('div')
 modelTitle.textContent = 'Model Type Demo'
-modelTitle.style.cssText = 'font-weight: bold; margin-bottom: 10px; color: #10b981;'
+modelTitle.style.cssText =
+  'font-weight: bold; margin-bottom: 10px; color: #10b981;'
 modelSection.appendChild(modelTitle)
 
 const modelTypeInfo = document.createElement('div')
-modelTypeInfo.style.cssText = 'font-size: 12px; margin: 10px 0; color: rgba(255,255,255,0.6);'
+modelTypeInfo.style.cssText =
+  'font-size: 12px; margin: 10px 0; color: rgba(255,255,255,0.6);'
 modelTypeInfo.innerHTML = `
   <strong>Supported formats:</strong><br>
   • GLTF (.gltf, .glb)<br>
@@ -243,7 +248,8 @@ modelTypeInfo.innerHTML = `
 modelSection.appendChild(modelTypeInfo)
 
 const urlInfo = document.createElement('div')
-urlInfo.style.cssText = 'font-size: 11px; margin: 15px 0; padding: 10px; background: rgba(239, 68, 68, 0.1); border-radius: 4px; color: rgba(255,255,255,0.7);'
+urlInfo.style.cssText =
+  'font-size: 11px; margin: 15px 0; padding: 10px; background: rgba(239, 68, 68, 0.1); border-radius: 4px; color: rgba(255,255,255,0.7);'
 urlInfo.innerHTML = `
   <strong>Note:</strong> To test with actual models, you'll need to provide URLs to 3D model files. 
   The loader supports progress tracking, caching, and placeholder display while loading.
@@ -254,14 +260,17 @@ controlPanel.appendChild(modelSection)
 
 // Cache controls
 const cacheSection = document.createElement('div')
-cacheSection.style.cssText = 'margin: 20px 0; padding-top: 15px; border-top: 1px solid rgba(255,255,255,0.1);'
+cacheSection.style.cssText =
+  'margin: 20px 0; padding-top: 15px; border-top: 1px solid rgba(255,255,255,0.1);'
 const cacheTitle = document.createElement('div')
 cacheTitle.textContent = 'Cache Management'
-cacheTitle.style.cssText = 'font-weight: bold; margin-bottom: 10px; color: #f59e0b;'
+cacheTitle.style.cssText =
+  'font-weight: bold; margin-bottom: 10px; color: #f59e0b;'
 cacheSection.appendChild(cacheTitle)
 
 const cacheInfo = document.createElement('div')
-cacheInfo.style.cssText = 'font-size: 12px; margin: 10px 0; color: rgba(255,255,255,0.6);'
+cacheInfo.style.cssText =
+  'font-size: 12px; margin: 10px 0; color: rgba(255,255,255,0.6);'
 cacheInfo.textContent = 'Cache size: 0 items'
 cacheSection.appendChild(cacheInfo)
 
@@ -312,14 +321,14 @@ function customAnimation() {
   // Rotate reference objects
   refCube.rotation.x += 0.01
   refCube.rotation.y += 0.01
-  
+
   refSphere.position.y = 0.5 + Math.sin(Date.now() * 0.001) * 0.3
-  
+
   // Rotate loaded asset if present
   if (currentAsset) {
     currentAsset.rotation.y += 0.005
   }
-  
+
   // Rotate placeholder if present
   if (currentPlaceholder) {
     currentPlaceholder.rotation.y += 0.01
