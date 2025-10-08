@@ -39,11 +39,11 @@ A modular measurement utility for Three.js scenes that allows users to measure d
 ## Installation
 
 ```bash
-npm install @tonyfox/three-measurements
+npm install @tonybfox/three-measurements
 # or
-pnpm add @tonyfox/three-measurements
+pnpm add @tonybfox/three-measurements
 # or
-yarn add @tonyfox/three-measurements
+yarn add @tonybfox/three-measurements
 ```
 
 ## Basic Usage
@@ -51,7 +51,7 @@ yarn add @tonyfox/three-measurements
 **Important**: This tool uses CSS2DObject for labels, which requires CSS2DRenderer to be set up alongside your main WebGL renderer.
 
 ```typescript
-import { MeasurementTool } from '@tonyfox/three-measurements'
+import { MeasurementTool } from '@tonybfox/three-measurements'
 import { CSS2DRenderer } from 'three/examples/jsm/renderers/CSS2DRenderer.js'
 import * as THREE from 'three'
 
@@ -119,7 +119,7 @@ tool.labelColor = 'yellow'
 ## Snapping Modes
 
 ```typescript
-import { SnapMode } from '@tonyfox/three-measurements'
+import { SnapMode } from '@tonybfox/three-measurements'
 
 tool.snapMode = SnapMode.VERTEX // Snap to nearest vertex
 tool.snapMode = SnapMode.FACE // Snap to face intersections

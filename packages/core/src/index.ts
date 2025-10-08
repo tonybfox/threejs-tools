@@ -1,3 +1,3 @@
-export * from '@tonyfox/threejs-camera'
-export * from '@tonyfox/threejs-grid'
-export * from '@tonyfox/threejs-measurements'
+export * from '@tonybfox/threejs-camera'
+export * from '@tonybfox/threejs-grid'
+export * from '@tonybfox/threejs-measurements'

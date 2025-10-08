@@ -11,9 +11,9 @@
   },
   "dependencies": {
     "three": "^0.180.0",
-    "@tonyfox/threejs-camera": "workspace:*",
-    "@tonyfox/threejs-grid": "workspace:*",
-    "@tonyfox/threejs-measurements": "workspace:*"
+    "@tonybfox/threejs-camera": "workspace:*",
+    "@tonybfox/threejs-grid": "workspace:*",
+    "@tonybfox/threejs-measurements": "workspace:*"
   },
   "devDependencies": {
     "@types/three": "^0.180.0",

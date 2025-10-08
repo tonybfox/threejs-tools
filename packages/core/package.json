@@ -1,5 +1,5 @@
 {
-  "name": "@tonyfox/threejs-tools",
+  "name": "@tonybfox/threejs-tools",
   "version": "0.0.1",
   "description": "Collection of reusable Three.js tools including camera switcher, grid, and measurement utilities.",
   "main": "dist/index.js",
@@ -19,9 +19,9 @@
     "three": ">=0.150.0"
   },
   "dependencies": {
-    "@tonyfox/threejs-camera": "workspace:*",
-    "@tonyfox/threejs-grid": "workspace:*",
-    "@tonyfox/threejs-measurements": "workspace:*"
+    "@tonybfox/threejs-camera": "workspace:*",
+    "@tonybfox/threejs-grid": "workspace:*",
+    "@tonybfox/threejs-measurements": "workspace:*"
   },
   "keywords": [
     "threejs",
