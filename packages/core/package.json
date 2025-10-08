@@ -21,7 +21,8 @@
   "dependencies": {
     "@tonybfox/threejs-camera": "workspace:*",
     "@tonybfox/threejs-grid": "workspace:*",
-    "@tonybfox/threejs-measurements": "workspace:*"
+    "@tonybfox/threejs-measurements": "workspace:*",
+    "@tonybfox/threejs-terrain": "workspace:*"
   },
   "keywords": [
     "threejs",
