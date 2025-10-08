@@ -7,8 +7,10 @@ export default defineConfig({
     alias: {
       '@tonybfox/threejs-camera': resolve('../packages/camera/src/index.ts'),
       '@tonybfox/threejs-grid': resolve('../packages/grid/src/index.ts'),
-      '@tonybfox/threejs-measurements': resolve('../packages/measurements/src/index.ts'),
-    }
+      '@tonybfox/threejs-measurements': resolve(
+        '../packages/measurements/src/index.ts'
+      ),
+    },
   },
   build: {
     outDir: 'dist',
