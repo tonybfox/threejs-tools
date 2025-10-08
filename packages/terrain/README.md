@@ -66,6 +66,7 @@ interface TerrainToolOptions {
   baseColor?: number // Default: 0x8B7355
   wireframe?: boolean // Default: false
   textureUrl?: string // Optional texture overlay
+  mapbox?: MapboxTextureOptions // Optional Mapbox satellite imagery configuration
   receiveShadow?: boolean // Default: true
   castShadow?: boolean // Default: true
   useDemoData?: boolean // Default: false - Use synthetic data instead of API
@@ -138,6 +139,10 @@ Loads terrain data and creates a mesh.
 
 Updates the terrain with new coordinates and/or dimensions.
 
+#### `setMapboxOptions(options?: MapboxTextureOptions): void`
+
+Updates the Mapbox imagery configuration at runtime. Pass `undefined` to disable fetching satellite textures.
+
 #### `getMesh(): THREE.Mesh | null`
 
 Returns the current terrain mesh.
@@ -186,6 +191,20 @@ interface TerrainData {
 }
 ```
 
+#### `MapboxTextureOptions`
+
+```typescript
+interface MapboxTextureOptions {
+  accessToken: string
+  styleId?: string // Default: mapbox/satellite-v9
+  imageWidth?: number // Default: 1024 (clamped to 1280)
+  imageHeight?: number // Default: 1024 (clamped to 1280)
+  highResolution?: boolean // Default: false
+  paddingRatio?: number // Default: 0.1
+  imageFormat?: 'png' | 'jpg' // Default: 'png'
+}
+```
+
 ## Example: With Texture Overlay
 
 ```javascript
@@ -201,6 +220,31 @@ terrainTool.loadTerrain(
   { width: 5000, depth: 5000 }
 )
 ```
+
+## Example: Mapbox Satellite Imagery
+
+```javascript
+const terrainTool = new TerrainTool(scene, {
+  widthSegments: 80,
+  depthSegments: 80,
+  elevationScale: 1.4,
+  mapbox: {
+    accessToken: process.env.MAPBOX_ACCESS_TOKEN,
+    imageWidth: 1024,
+    imageHeight: 1024,
+    highResolution: true,
+    paddingRatio: 0.15,
+    imageFormat: 'jpg',
+  },
+})
+
+await terrainTool.loadTerrain(
+  { latitude: 36.1699, longitude: -115.1398 },
+  { width: 6000, depth: 6000 }
+)
+```
+
+> **Note:** Mapbox terms require visible attribution (“© Mapbox © OpenStreetMap contributors”) wherever their imagery is displayed.
 
 ## Notes
 

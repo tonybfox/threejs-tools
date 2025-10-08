@@ -6,7 +6,13 @@ import {
   TerrainData,
   TerrainToolEvents,
   ElevationPoint,
+  MapboxTextureOptions,
 } from './TerrainTypes'
+
+type TerrainTextureSource = {
+  url: string
+  revokeOnUse: boolean
+}
 
 /**
  * Terrain mesh creator for Three.js scenes
@@ -42,6 +48,8 @@ export class TerrainTool extends THREE.EventDispatcher<TerrainToolEvents> {
   private mesh: THREE.Mesh | null = null
   private currentData: TerrainData | null = null
   private isLoading: boolean = false
+  private mapboxOptions?: MapboxTextureOptions
+  private generatedTextureUrls: Set<string> = new Set()
 
   // Configuration
   public widthSegments: number
@@ -70,9 +78,17 @@ export class TerrainTool extends THREE.EventDispatcher<TerrainToolEvents> {
     this.baseColor = options.baseColor ?? 0x8b7355
     this.wireframe = options.wireframe ?? false
     this.textureUrl = options.textureUrl
+    this.mapboxOptions = options.mapbox
     this.receiveShadow = options.receiveShadow ?? true
     this.castShadow = options.castShadow ?? true
     this.useDemoData = options.useDemoData ?? false
+  }
+
+  /**
+   * Update Mapbox imagery configuration at runtime
+   */
+  setMapboxOptions(options?: MapboxTextureOptions): void {
+    this.mapboxOptions = options
   }
 
   /**
@@ -109,8 +125,10 @@ export class TerrainTool extends THREE.EventDispatcher<TerrainToolEvents> {
         data: terrainData,
       })
 
+      const textureSource = await this.resolveTexture(center, dimensions)
+
       // Create and add mesh to scene
-      await this.createMesh(terrainData)
+      await this.createMesh(terrainData, textureSource)
     } catch (error) {
       console.error('Error loading terrain:', error)
       this.dispatchEvent({
@@ -161,7 +179,11 @@ export class TerrainTool extends THREE.EventDispatcher<TerrainToolEvents> {
     // Approximate degrees per meter at this latitude
     const metersPerDegreeLat = 111320
     const metersPerDegreeLon =
-      111320 * Math.cos((center.latitude * Math.PI) / 180)
+      111320 *
+      Math.max(
+        Math.abs(Math.cos((center.latitude * Math.PI) / 180)),
+        1e-6
+      )
 
     const latRange = dimensions.depth / metersPerDegreeLat
     const lonRange = dimensions.width / metersPerDegreeLon
@@ -169,14 +191,14 @@ export class TerrainTool extends THREE.EventDispatcher<TerrainToolEvents> {
     const latStep = latRange / this.depthSegments
     const lonStep = lonRange / this.widthSegments
 
-    const startLat = center.latitude - latRange / 2
+    const startLat = center.latitude + latRange / 2
     const startLon = center.longitude - lonRange / 2
 
     // Create grid of points
     for (let z = 0; z <= this.depthSegments; z++) {
       for (let x = 0; x <= this.widthSegments; x++) {
         points.push({
-          latitude: startLat + z * latStep,
+          latitude: startLat - z * latStep,
           longitude: startLon + x * lonStep,
         })
       }
@@ -285,7 +307,10 @@ export class TerrainTool extends THREE.EventDispatcher<TerrainToolEvents> {
    * Creates a terrain mesh from elevation data
    * @private
    */
-  private async createMesh(data: TerrainData): Promise<void> {
+  private async createMesh(
+    data: TerrainData,
+    textureSource?: TerrainTextureSource
+  ): Promise<void> {
     // Remove existing mesh if any
     if (this.mesh) {
       this.scene.remove(this.mesh)
@@ -325,12 +350,26 @@ export class TerrainTool extends THREE.EventDispatcher<TerrainToolEvents> {
     // Create material
     let material: THREE.Material
 
-    if (this.textureUrl) {
-      const texture = await new THREE.TextureLoader().loadAsync(this.textureUrl)
-      material = new THREE.MeshStandardMaterial({
-        map: texture,
-        wireframe: this.wireframe,
-      })
+    if (textureSource?.url) {
+      try {
+        const texture = await new THREE.TextureLoader().loadAsync(
+          textureSource.url
+        )
+        material = new THREE.MeshStandardMaterial({
+          map: texture,
+          wireframe: this.wireframe,
+        })
+      } catch (error) {
+        console.warn('Failed to load terrain texture, using base color.', error)
+        material = new THREE.MeshStandardMaterial({
+          color: this.baseColor,
+          wireframe: this.wireframe,
+        })
+      } finally {
+        if (textureSource.revokeOnUse) {
+          this.releaseGeneratedTexture(textureSource.url)
+        }
+      }
     } else {
       material = new THREE.MeshStandardMaterial({
         color: this.baseColor,
@@ -352,6 +391,137 @@ export class TerrainTool extends THREE.EventDispatcher<TerrainToolEvents> {
       type: 'meshLoaded',
       mesh: this.mesh,
     })
+  }
+
+  private async resolveTexture(
+    center: GeoCoordinates,
+    dimensions: TerrainDimensions
+  ): Promise<TerrainTextureSource | undefined> {
+    if (this.textureUrl) {
+      return {
+        url: this.textureUrl,
+        revokeOnUse: false,
+      }
+    }
+
+    if (!this.mapboxOptions) {
+      return undefined
+    }
+
+    try {
+      const url = await this.fetchMapboxTexture(
+        center,
+        dimensions,
+        this.mapboxOptions
+      )
+      this.generatedTextureUrls.add(url)
+      return {
+        url,
+        revokeOnUse: true,
+      }
+    } catch (error) {
+      console.warn(
+        'Failed to fetch Mapbox imagery, falling back to base material.',
+        error
+      )
+      return undefined
+    }
+  }
+
+  private computeBoundingBox(
+    center: GeoCoordinates,
+    dimensions: TerrainDimensions,
+    paddingRatio: number
+  ): { minLat: number; maxLat: number; minLon: number; maxLon: number } {
+    const metersPerDegreeLat = 111320
+    const latRadians = (center.latitude * Math.PI) / 180
+    const cosLat = Math.cos(latRadians)
+    const metersPerDegreeLon = 111320 * Math.max(Math.abs(cosLat), 1e-6)
+
+    const appliedPadding = Math.max(0, paddingRatio)
+    const widthWithPadding = dimensions.width * (1 + appliedPadding)
+    const depthWithPadding = dimensions.depth * (1 + appliedPadding)
+
+    const halfDepthDegrees = (depthWithPadding / 2) / metersPerDegreeLat
+    const halfWidthDegrees = (widthWithPadding / 2) / metersPerDegreeLon
+
+    const clamp = (value: number, min: number, max: number) =>
+      Math.min(Math.max(value, min), max)
+
+    const minLat = clamp(center.latitude - halfDepthDegrees, -90, 90)
+    const maxLat = clamp(center.latitude + halfDepthDegrees, -90, 90)
+    const minLon = clamp(center.longitude - halfWidthDegrees, -180, 180)
+    const maxLon = clamp(center.longitude + halfWidthDegrees, -180, 180)
+
+    return { minLat, maxLat, minLon, maxLon }
+  }
+
+  private async fetchMapboxTexture(
+    center: GeoCoordinates,
+    dimensions: TerrainDimensions,
+    options: MapboxTextureOptions
+  ): Promise<string> {
+    const styleId = options.styleId ?? 'mapbox/satellite-v9'
+    const normalizedStyleId = styleId
+      .replace('mapbox://styles/', '')
+      .replace(/^\/+/, '')
+
+    const width = Math.min(
+      1280,
+      Math.max(1, Math.floor(options.imageWidth ?? 1024))
+    )
+    const height = Math.min(
+      1280,
+      Math.max(1, Math.floor(options.imageHeight ?? 1024))
+    )
+    const highResSuffix = options.highResolution ? '@2x' : ''
+    const format = options.imageFormat ?? 'png'
+    const paddingRatio = options.paddingRatio ?? 0.1
+
+    const bounds = this.computeBoundingBox(center, dimensions, paddingRatio)
+    const bbox = `${bounds.minLon.toFixed(6)},${bounds.minLat.toFixed(
+      6
+    )},${bounds.maxLon.toFixed(6)},${bounds.maxLat.toFixed(6)}`
+
+    const params = new URLSearchParams({
+      access_token: options.accessToken,
+      format,
+    })
+
+    const requestUrl = `https://api.mapbox.com/styles/v1/${normalizedStyleId}/static/[${bbox}]/${width}x${height}${highResSuffix}?${params.toString()}`
+
+    const response = await fetch(requestUrl)
+    if (!response.ok) {
+      throw new Error(
+        `Mapbox imagery request failed: ${response.status} ${response.statusText}`
+      )
+    }
+
+    const blob = await response.blob()
+
+    if (
+      typeof URL === 'undefined' ||
+      typeof URL.createObjectURL !== 'function'
+    ) {
+      throw new Error('URL.createObjectURL is not available in this environment')
+    }
+
+    return URL.createObjectURL(blob)
+  }
+
+  private releaseGeneratedTexture(url: string): void {
+    if (!this.generatedTextureUrls.has(url)) {
+      return
+    }
+
+    if (
+      typeof URL !== 'undefined' &&
+      typeof URL.revokeObjectURL === 'function'
+    ) {
+      URL.revokeObjectURL(url)
+    }
+
+    this.generatedTextureUrls.delete(url)
   }
 
   /**
@@ -390,5 +560,11 @@ export class TerrainTool extends THREE.EventDispatcher<TerrainToolEvents> {
       this.mesh = null
     }
     this.currentData = null
+
+    if (this.generatedTextureUrls.size > 0) {
+      for (const url of Array.from(this.generatedTextureUrls)) {
+        this.releaseGeneratedTexture(url)
+      }
+    }
   }
 }

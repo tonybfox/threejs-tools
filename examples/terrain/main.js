@@ -18,18 +18,13 @@ const { scene, camera, renderer, controls } = sceneSetup
 camera.far = 50000
 camera.updateProjectionMatrix()
 
-// Create terrain tool
-const terrainTool = new TerrainTool(scene, {
-  widthSegments: 50,
-  depthSegments: 50,
-  elevationScale: 2.0,
-  baseColor: 0x8b7355,
-  wireframe: false,
-  useDemoData: true, // Use demo data for testing/environments where API is blocked
-})
-
 // Predefined locations
 const locations = {
+  home: {
+    latitude: 50.741530098472964,
+    longitude: -1.784831359077266,
+    name: 'Home',
+  },
   lasVegas: { latitude: 36.1699, longitude: -115.1398, name: 'Las Vegas' },
   grandCanyon: {
     latitude: 36.0544,
@@ -46,9 +41,47 @@ const locations = {
 }
 
 // Current settings
-let currentLocation = locations.lasVegas
-let currentWidth = 5000
-let currentDepth = 5000
+let currentLocation = locations.home
+let currentWidth = 150
+let currentDepth = 150
+
+const MAPBOX_TOKEN_STORAGE_KEY = 'threejs-tools-mapbox-token'
+let mapboxAccessToken = ''
+let useMapboxImagery = false
+
+try {
+  const storedToken = localStorage.getItem(MAPBOX_TOKEN_STORAGE_KEY)
+  if (storedToken) {
+    const trimmedToken = storedToken.trim()
+    if (trimmedToken) {
+      mapboxAccessToken = trimmedToken
+      useMapboxImagery = true
+    }
+  }
+} catch (error) {
+  console.warn('Unable to access stored Mapbox token.', error)
+}
+
+// Create terrain tool
+const terrainTool = new TerrainTool(scene, {
+  widthSegments: 50,
+  depthSegments: 50,
+  elevationScale: 1.0,
+  baseColor: 0xffffff,
+  wireframe: false,
+  useDemoData: false, // Use demo data for testing/environments where API is blocked
+  mapbox:
+    useMapboxImagery && mapboxAccessToken
+      ? {
+          accessToken: mapboxAccessToken,
+          imageWidth: 1024,
+          imageHeight: 1024,
+          highResolution: true,
+          paddingRatio: 0.15,
+          imageFormat: 'jpg',
+        }
+      : undefined,
+})
 
 // Create control panel
 const controlPanel = UIHelpers.createControlPanel('Terrain Controls')
@@ -195,6 +228,134 @@ depthInput.style.borderRadius = '4px'
 controlPanel.appendChild(depthLabel)
 controlPanel.appendChild(depthInput)
 
+const mapboxSection = document.createElement('div')
+mapboxSection.style.marginTop = '20px'
+mapboxSection.style.marginBottom = '20px'
+
+const mapboxHeader = document.createElement('div')
+mapboxHeader.textContent = 'Satellite Imagery (Mapbox)'
+mapboxHeader.style.fontSize = '14px'
+mapboxHeader.style.marginBottom = '6px'
+mapboxSection.appendChild(mapboxHeader)
+
+const mapboxToggleLabel = document.createElement('label')
+mapboxToggleLabel.style.display = 'flex'
+mapboxToggleLabel.style.alignItems = 'center'
+mapboxToggleLabel.style.fontSize = '13px'
+mapboxToggleLabel.style.cursor = 'pointer'
+
+const mapboxToggle = document.createElement('input')
+mapboxToggle.type = 'checkbox'
+mapboxToggle.checked = useMapboxImagery
+mapboxToggle.style.marginRight = '8px'
+mapboxToggleLabel.appendChild(mapboxToggle)
+
+const mapboxToggleText = document.createElement('span')
+mapboxToggleText.textContent = 'Enable Mapbox satellite overlay'
+mapboxToggleLabel.appendChild(mapboxToggleText)
+
+mapboxSection.appendChild(mapboxToggleLabel)
+
+const mapboxTokenInput = document.createElement('input')
+mapboxTokenInput.type = 'password'
+mapboxTokenInput.placeholder = 'Mapbox access token'
+mapboxTokenInput.value = mapboxAccessToken
+mapboxTokenInput.style.width = '100%'
+mapboxTokenInput.style.padding = '6px'
+mapboxTokenInput.style.marginTop = '10px'
+mapboxTokenInput.style.backgroundColor = '#2a2a2a'
+mapboxTokenInput.style.color = 'white'
+mapboxTokenInput.style.border = '1px solid #444'
+mapboxTokenInput.style.borderRadius = '4px'
+mapboxTokenInput.disabled = !useMapboxImagery
+mapboxSection.appendChild(mapboxTokenInput)
+
+const mapboxHint = document.createElement('div')
+mapboxHint.textContent =
+  'Requires a Mapbox access token. The token is stored locally in this browser.'
+mapboxHint.style.fontSize = '11px'
+mapboxHint.style.marginTop = '6px'
+mapboxHint.style.color = '#bbbbbb'
+mapboxSection.appendChild(mapboxHint)
+
+controlPanel.appendChild(mapboxSection)
+
+const mapboxAttribution = document.createElement('div')
+mapboxAttribution.textContent =
+  'Imagery © Mapbox © OpenStreetMap contributors'
+mapboxAttribution.style.position = 'absolute'
+mapboxAttribution.style.bottom = '10px'
+mapboxAttribution.style.right = '10px'
+mapboxAttribution.style.fontSize = '11px'
+mapboxAttribution.style.backgroundColor = 'rgba(0, 0, 0, 0.6)'
+mapboxAttribution.style.padding = '4px 8px'
+mapboxAttribution.style.borderRadius = '4px'
+mapboxAttribution.style.pointerEvents = 'none'
+mapboxAttribution.style.display = 'none'
+
+const updateAttributionVisibility = () => {
+  mapboxAttribution.style.display =
+    useMapboxImagery && mapboxAccessToken ? 'block' : 'none'
+}
+
+if (document.body) {
+  document.body.appendChild(mapboxAttribution)
+  updateAttributionVisibility()
+} else {
+  window.addEventListener('DOMContentLoaded', () => {
+    document.body.appendChild(mapboxAttribution)
+    updateAttributionVisibility()
+  })
+}
+
+const applyMapboxOptions = () => {
+  const token = mapboxAccessToken.trim()
+  if (useMapboxImagery && token) {
+    mapboxAccessToken = token
+    terrainTool.setMapboxOptions({
+      accessToken: mapboxAccessToken,
+      imageWidth: 1024,
+      imageHeight: 1024,
+      highResolution: true,
+      paddingRatio: 0.15,
+      imageFormat: 'jpg',
+    })
+  } else {
+    terrainTool.setMapboxOptions(undefined)
+  }
+  updateAttributionVisibility()
+}
+
+mapboxToggle.addEventListener('change', () => {
+  useMapboxImagery = mapboxToggle.checked
+  mapboxTokenInput.disabled = !useMapboxImagery
+  applyMapboxOptions()
+})
+
+mapboxTokenInput.addEventListener('input', (event) => {
+  const value = event.target.value
+  const trimmedValue = value.trim()
+  mapboxAccessToken = trimmedValue
+
+  try {
+    if (trimmedValue) {
+      localStorage.setItem(MAPBOX_TOKEN_STORAGE_KEY, trimmedValue)
+    } else {
+      localStorage.removeItem(MAPBOX_TOKEN_STORAGE_KEY)
+    }
+  } catch (error) {
+    console.warn('Unable to persist Mapbox token.', error)
+  }
+
+  if (useMapboxImagery) {
+    applyMapboxOptions()
+  } else {
+    updateAttributionVisibility()
+  }
+})
+
+applyMapboxOptions()
+
 // Load terrain button
 const loadButton = UIHelpers.createButton(
   'Load Terrain',
@@ -209,6 +370,16 @@ const loadButton = UIHelpers.createButton(
 
     currentWidth = width
     currentDepth = depth
+
+    if (useMapboxImagery && !mapboxAccessToken) {
+      statusDiv.innerHTML =
+        '<strong>Status:</strong> <span style="color: #ff4444;">Enter a Mapbox access token to fetch imagery.</span>'
+      loadButton.disabled = false
+      loadButton.textContent = 'Load Terrain'
+      return
+    }
+
+    applyMapboxOptions()
 
     await terrainTool.loadTerrain(
       { latitude: lat, longitude: lon },

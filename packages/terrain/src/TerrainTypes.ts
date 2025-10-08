@@ -21,6 +21,26 @@ export interface TerrainDimensions {
 }
 
 /**
+ * Configuration for fetching satellite imagery from Mapbox
+ */
+export interface MapboxTextureOptions {
+  /** Required Mapbox access token */
+  accessToken: string
+  /** Style identifier (default: mapbox/satellite-v9) */
+  styleId?: string
+  /** Requested image width in pixels (clamped to Mapbox limits, default: 1024) */
+  imageWidth?: number
+  /** Requested image height in pixels (clamped to Mapbox limits, default: 1024) */
+  imageHeight?: number
+  /** Whether to request @2x high-DPI imagery (default: false) */
+  highResolution?: boolean
+  /** Optional padding factor (0-1) to expand the requested bounds (default: 0.1) */
+  paddingRatio?: number
+  /** Override imagery format (default: png). jpg is smaller but lossy. */
+  imageFormat?: 'png' | 'jpg'
+}
+
+/**
  * Configuration options for the terrain tool
  */
 export interface TerrainToolOptions {
@@ -36,6 +56,8 @@ export interface TerrainToolOptions {
   wireframe?: boolean
   /** Texture URL for imagery overlay (optional) */
   textureUrl?: string
+  /** Automatically fetch Mapbox satellite imagery for the current bounds */
+  mapbox?: MapboxTextureOptions
   /** Whether to receive shadows (default: true) */
   receiveShadow?: boolean
   /** Whether to cast shadows (default: true) */
