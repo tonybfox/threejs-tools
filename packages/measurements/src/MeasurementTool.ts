@@ -2,7 +2,9 @@ import * as THREE from 'three'
 import { CSS2DObject } from 'three/examples/jsm/renderers/CSS2DRenderer'
 import {
   Measurement,
+  MeasurementPoint,
   MeasurementData,
+  MeasurementPointData,
   MeasurementToolOptions,
   MeasurementToolEvents,
   SnapMode,
@@ -46,6 +48,8 @@ export class MeasurementTool extends THREE.EventDispatcher<MeasurementToolEvents
   private domElement: HTMLElement | null = null
   private targetObjects: THREE.Object3D[] = []
   private currentMeasurement: Partial<Measurement> | null = null
+  private currentStartObject: THREE.Object3D | null = null
+  private currentStartLocalPos: THREE.Vector3 | null = null
   private previewLine: THREE.Line | null = null
   private previewLabel: CSS2DObject | null = null
   private snapMarker: THREE.Sprite | null = null
@@ -65,6 +69,9 @@ export class MeasurementTool extends THREE.EventDispatcher<MeasurementToolEvents
   public markerColor: number = 0x00ff00
   public markerSize: number = 0.08
   public markerVisible: boolean = true
+
+  // Dynamic measurement mode
+  private dynamicMode: boolean = false
 
   // Materials
   private lineMaterial: THREE.LineBasicMaterial
@@ -186,29 +193,125 @@ export class MeasurementTool extends THREE.EventDispatcher<MeasurementToolEvents
   }
 
   /**
-   * Add a measurement programmatically
+   * Create a static measurement point from a Vector3 position
+   */
+  private createStaticPoint(position: THREE.Vector3): MeasurementPoint {
+    return {
+      position: position.clone(),
+      isDynamic: false,
+    }
+  }
+
+  /**
+   * Create a dynamic measurement point attached to an object
+   */
+  private createDynamicPoint(
+    object: THREE.Object3D,
+    localPosition: THREE.Vector3 = new THREE.Vector3()
+  ): MeasurementPoint {
+    const worldPosition = localPosition.clone()
+    object.localToWorld(worldPosition)
+
+    return {
+      position: worldPosition.clone(),
+      sourceObject: object,
+      localPosition: localPosition.clone(),
+      isDynamic: true,
+    }
+  }
+
+  /**
+   * Update a measurement point's world position from its object (if dynamic)
+   */
+  private updateMeasurementPoint(point: MeasurementPoint): boolean {
+    if (!point.isDynamic || !point.sourceObject || !point.localPosition) {
+      return false
+    }
+
+    const newWorldPosition = point.localPosition.clone()
+    point.sourceObject.localToWorld(newWorldPosition)
+
+    if (!point.position.equals(newWorldPosition)) {
+      point.position.copy(newWorldPosition)
+      return true
+    }
+
+    return false
+  }
+
+  /**
+   * Add a measurement programmatically using Vector3 positions (static)
    */
   addMeasurement(start: THREE.Vector3, end: THREE.Vector3): Measurement {
+    const startPoint = this.createStaticPoint(start)
+    const endPoint = this.createStaticPoint(end)
+    return this.addMeasurementFromPoints(startPoint, endPoint)
+  }
+
+  /**
+   * Add a dynamic measurement between two objects
+   */
+  addDynamicMeasurement(
+    startObject: THREE.Object3D,
+    endObject: THREE.Object3D,
+    startLocalPos: THREE.Vector3 = new THREE.Vector3(),
+    endLocalPos: THREE.Vector3 = new THREE.Vector3()
+  ): Measurement {
+    const startPoint = this.createDynamicPoint(startObject, startLocalPos)
+    const endPoint = this.createDynamicPoint(endObject, endLocalPos)
+    return this.addMeasurementFromPoints(startPoint, endPoint)
+  }
+
+  /**
+   * Add a measurement from a static point to a dynamic object
+   */
+  addMeasurementToObject(
+    staticPos: THREE.Vector3,
+    targetObject: THREE.Object3D,
+    objectLocalPos: THREE.Vector3 = new THREE.Vector3()
+  ): Measurement {
+    const startPoint = this.createStaticPoint(staticPos)
+    const endPoint = this.createDynamicPoint(targetObject, objectLocalPos)
+    return this.addMeasurementFromPoints(startPoint, endPoint)
+  }
+
+  /**
+   * Core method to add a measurement from two measurement points
+   */
+  private addMeasurementFromPoints(
+    start: MeasurementPoint,
+    end: MeasurementPoint
+  ): Measurement {
     const id = this.generateId()
-    const distance = start.distanceTo(end)
+    const distance = start.position.distanceTo(end.position)
 
     // Create line geometry
-    const geometry = new THREE.BufferGeometry().setFromPoints([start, end])
+    const geometry = new THREE.BufferGeometry().setFromPoints([
+      start.position,
+      end.position,
+    ])
     const line = new THREE.Line(geometry, this.lineMaterial.clone())
 
     // Create label
     const label = this.createLabel(distance)
-    const midpoint = start.clone().add(end).multiplyScalar(0.5)
+    const midpoint = start.position
+      .clone()
+      .add(end.position)
+      .multiplyScalar(0.5)
     label.position.copy(midpoint)
+
+    // Determine if measurement is dynamic
+    const isDynamic = start.isDynamic || end.isDynamic
 
     // Create measurement object
     const measurement: Measurement = {
       id,
-      start: start.clone(),
-      end: end.clone(),
+      start,
+      end,
       line,
       label,
       distance,
+      isDynamic,
     }
 
     // Add to scene and tracking
@@ -223,6 +326,69 @@ export class MeasurementTool extends THREE.EventDispatcher<MeasurementToolEvents
     })
 
     return measurement
+  }
+
+  /**
+   * Update all dynamic measurements in real-time
+   * Call this in your animation loop to keep dynamic measurements up-to-date
+   */
+  updateDynamicMeasurements(): boolean {
+    let updated = false
+
+    for (const measurement of this.measurements) {
+      if (!measurement.isDynamic) continue
+
+      let needsUpdate = false
+
+      // Update start point
+      if (this.updateMeasurementPoint(measurement.start)) {
+        needsUpdate = true
+      }
+
+      // Update end point
+      if (this.updateMeasurementPoint(measurement.end)) {
+        needsUpdate = true
+      }
+
+      if (needsUpdate) {
+        // Recalculate distance
+        const newDistance = measurement.start.position.distanceTo(
+          measurement.end.position
+        )
+        measurement.distance = newDistance
+
+        // Update line geometry
+        const positions = [measurement.start.position, measurement.end.position]
+        measurement.line.geometry.setFromPoints(positions)
+        measurement.line.geometry.attributes.position.needsUpdate = true
+
+        // Update label position and text
+        const midpoint = measurement.start.position
+          .clone()
+          .add(measurement.end.position)
+          .multiplyScalar(0.5)
+        measurement.label.position.copy(midpoint)
+        this.updateLabelText(measurement.label.element, newDistance)
+
+        updated = true
+      }
+    }
+
+    return updated
+  }
+
+  /**
+   * Set whether interactive measurements should be dynamic or static
+   */
+  setDynamicMode(enabled: boolean): void {
+    this.dynamicMode = enabled
+  }
+
+  /**
+   * Get the current dynamic mode state
+   */
+  getDynamicMode(): boolean {
+    return this.dynamicMode
   }
 
   /**
@@ -339,19 +505,38 @@ export class MeasurementTool extends THREE.EventDispatcher<MeasurementToolEvents
   }
 
   /**
+   * Convert a MeasurementPoint to serializable data
+   */
+  private serializeMeasurementPoint(
+    point: MeasurementPoint
+  ): MeasurementPointData {
+    return {
+      position: point.position.toArray() as [number, number, number],
+      localPosition: point.localPosition?.toArray() as
+        | [number, number, number]
+        | undefined,
+      isDynamic: point.isDynamic,
+      objectId: point.sourceObject?.uuid, // Note: object references can't be fully serialized
+    }
+  }
+
+  /**
    * Serialize measurements to JSON-compatible format
+   * Note: Dynamic measurements will lose their object references and become static when deserialized
    */
   serialize(): MeasurementData[] {
     return this.measurements.map((measurement) => ({
       id: measurement.id,
-      start: measurement.start.toArray() as [number, number, number],
-      end: measurement.end.toArray() as [number, number, number],
+      start: this.serializeMeasurementPoint(measurement.start),
+      end: this.serializeMeasurementPoint(measurement.end),
       distance: measurement.distance,
+      isDynamic: measurement.isDynamic,
     }))
   }
 
   /**
    * Deserialize measurements from JSON data
+   * Note: Dynamic measurements become static since object references are lost
    */
   deserialize(data: MeasurementData[]): void {
     // Clear existing measurements
@@ -359,8 +544,8 @@ export class MeasurementTool extends THREE.EventDispatcher<MeasurementToolEvents
 
     // Create measurements from data
     data.forEach((item) => {
-      const start = new THREE.Vector3().fromArray(item.start)
-      const end = new THREE.Vector3().fromArray(item.end)
+      const start = new THREE.Vector3().fromArray(item.start.position)
+      const end = new THREE.Vector3().fromArray(item.end.position)
       this.addMeasurement(start, end)
     })
   }
@@ -391,10 +576,10 @@ export class MeasurementTool extends THREE.EventDispatcher<MeasurementToolEvents
 
     if (!this.currentMeasurement) {
       // Start new measurement
-      this.startMeasurement(snapResult.point)
+      this.startMeasurement(snapResult)
     } else {
       // Complete measurement
-      this.completeMeasurement(snapResult.point)
+      this.completeMeasurement(snapResult)
     }
   }
 
@@ -480,8 +665,9 @@ export class MeasurementTool extends THREE.EventDispatcher<MeasurementToolEvents
     }
   }
 
-  private startMeasurement(point: THREE.Vector3): void {
+  private startMeasurement(snapResult: SnapResult): void {
     const id = this.generateId()
+    const point = snapResult.point
 
     // Hide snap marker temporarily while creating preview
     this.hideSnapMarker()
@@ -497,9 +683,26 @@ export class MeasurementTool extends THREE.EventDispatcher<MeasurementToolEvents
     this.previewLabel.position.copy(point)
     this.scene.add(this.previewLabel)
 
+    // Create measurement point based on dynamic mode
+    let startPoint: MeasurementPoint
+    if (this.dynamicMode && snapResult.object) {
+      // Calculate local position in the object's coordinate system
+      const localPos = snapResult.object.worldToLocal(point.clone())
+      startPoint = this.createDynamicPoint(snapResult.object, localPos)
+
+      // Store object reference for completion
+      this.currentStartObject = snapResult.object
+      this.currentStartLocalPos = localPos.clone()
+    } else {
+      // Create static measurement point
+      startPoint = this.createStaticPoint(point)
+      this.currentStartObject = null
+      this.currentStartLocalPos = null
+    }
+
     this.currentMeasurement = {
       id,
-      start: point.clone(),
+      start: startPoint,
     }
   }
 
@@ -508,42 +711,59 @@ export class MeasurementTool extends THREE.EventDispatcher<MeasurementToolEvents
       return
 
     const start = this.currentMeasurement.start!
-    const distance = start.distanceTo(point)
+    const distance = start.position.distanceTo(point)
 
     // Update preview line
-    const geometry = new THREE.BufferGeometry().setFromPoints([start, point])
+    const geometry = new THREE.BufferGeometry().setFromPoints([
+      start.position,
+      point,
+    ])
     this.previewLine.geometry.dispose()
     this.previewLine.geometry = geometry
     this.previewLine.computeLineDistances()
 
     // Update preview label
-    const midpoint = start.clone().add(point).multiplyScalar(0.5)
+    const midpoint = start.position.clone().add(point).multiplyScalar(0.5)
     this.previewLabel.position.copy(midpoint)
     this.updateLabelText(this.previewLabel.element, distance)
 
     this.dispatchEvent({
       type: 'previewUpdated',
-      start,
+      start: start.position,
       current: point,
       distance,
     })
   }
 
-  private completeMeasurement(point: THREE.Vector3): void {
+  private completeMeasurement(snapResult: SnapResult): void {
     if (!this.currentMeasurement) return
 
     const start = this.currentMeasurement.start!
+    const point = snapResult.point
 
     this.disableInteraction()
 
     // Clean up preview
     this.cleanupPreview()
 
-    // Create actual measurement
-    this.addMeasurement(start, point)
+    // Create end measurement point based on dynamic mode
+    let endPoint: MeasurementPoint
+    if (this.dynamicMode && snapResult.object) {
+      // Calculate local position in the object's coordinate system
+      const localPos = snapResult.object.worldToLocal(point.clone())
+      endPoint = this.createDynamicPoint(snapResult.object, localPos)
+    } else {
+      // Create static measurement point
+      endPoint = this.createStaticPoint(point)
+    }
 
-    // Reset current measurement
+    // Create actual measurement using the measurement points
+    this.addMeasurementFromPoints(start, endPoint)
+
+    // Reset current measurement and object references
     this.currentMeasurement = null
+    this.currentStartObject = null
+    this.currentStartLocalPos = null
 
     // Re-create snap marker for next measurement
     this.createSnapMarker()
@@ -552,6 +772,8 @@ export class MeasurementTool extends THREE.EventDispatcher<MeasurementToolEvents
   private cancelCurrentMeasurement(): void {
     this.cleanupPreview()
     this.currentMeasurement = null
+    this.currentStartObject = null
+    this.currentStartLocalPos = null
 
     // Re-create snap marker after canceling
     this.createSnapMarker()

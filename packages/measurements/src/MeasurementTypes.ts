@@ -2,13 +2,27 @@ import * as THREE from 'three'
 import { CSS2DObject } from 'three/examples/jsm/renderers/CSS2DRenderer'
 
 /**
+ * Represents a measurement point that can be either static (Vector3) or dynamic (attached to an object)
+ */
+export interface MeasurementPoint {
+  /** The current world position (always up-to-date) */
+  position: THREE.Vector3
+  /** Source object if this point is attached to an object */
+  sourceObject?: THREE.Object3D
+  /** Local position relative to the source object (if attached) */
+  localPosition?: THREE.Vector3
+  /** Whether this point is dynamic (attached to an object) */
+  isDynamic: boolean
+}
+
+/**
  * Represents a single measurement in the scene
  */
 export interface Measurement {
   /** Starting point of the measurement */
-  start: THREE.Vector3
+  start: MeasurementPoint
   /** Ending point of the measurement */
-  end: THREE.Vector3
+  end: MeasurementPoint
   /** The line geometry representing the measurement */
   line: THREE.Line
   /** The CSS2D label showing the distance */
@@ -17,20 +31,38 @@ export interface Measurement {
   distance: number
   /** Unique identifier for the measurement */
   id: string
+  /** Whether this measurement has any dynamic points */
+  isDynamic: boolean
+}
+
+/**
+ * Serializable measurement point data for export/import
+ */
+export interface MeasurementPointData {
+  /** Position as array [x, y, z] */
+  position: [number, number, number]
+  /** Local position relative to source object (if dynamic) */
+  localPosition?: [number, number, number]
+  /** Whether this point is dynamic */
+  isDynamic: boolean
+  /** Object identifier for dynamic points (note: objects can't be serialized) */
+  objectId?: string
 }
 
 /**
  * Serializable measurement data for export/import
  */
 export interface MeasurementData {
-  /** Starting point as array [x, y, z] */
-  start: [number, number, number]
-  /** Ending point as array [x, y, z] */
-  end: [number, number, number]
+  /** Starting point data */
+  start: MeasurementPointData
+  /** Ending point data */
+  end: MeasurementPointData
   /** Calculated distance */
   distance: number
   /** Unique identifier */
   id: string
+  /** Whether this measurement has any dynamic points */
+  isDynamic: boolean
 }
 
 /**

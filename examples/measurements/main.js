@@ -174,6 +174,31 @@ const snapDistanceSlider = UIHelpers.createSlider(
   'Snap Distance'
 )
 
+// Create dynamic measurement toggle checkbox
+const dynamicContainer = document.createElement('div')
+dynamicContainer.style.margin = '15px 0'
+
+const dynamicLabel = document.createElement('label')
+dynamicLabel.style.display = 'flex'
+dynamicLabel.style.alignItems = 'center'
+dynamicLabel.style.fontSize = '14px'
+dynamicLabel.style.cursor = 'pointer'
+
+const dynamicMeasurementCheckbox = document.createElement('input')
+dynamicMeasurementCheckbox.type = 'checkbox'
+dynamicMeasurementCheckbox.checked = false
+dynamicMeasurementCheckbox.style.marginRight = '8px'
+
+const dynamicLabelText = document.createElement('span')
+dynamicLabelText.textContent = 'Create Dynamic Measurements'
+
+dynamicLabel.appendChild(dynamicMeasurementCheckbox)
+dynamicLabel.appendChild(dynamicLabelText)
+dynamicContainer.appendChild(dynamicLabel)
+
+// Track dynamic measurement mode
+let isDynamicMode = false
+
 // Add all elements to control panel
 controlPanel.appendChild(toggleButton)
 controlPanel.appendChild(undoButton)
@@ -182,6 +207,7 @@ controlPanel.appendChild(exportButton)
 controlPanel.appendChild(importButton)
 controlPanel.appendChild(snapContainer)
 controlPanel.appendChild(snapDistanceSlider)
+controlPanel.appendChild(dynamicContainer)
 
 // Create info panel for measurement stats
 const infoPanel = UIHelpers.createControlPanel(
@@ -196,6 +222,9 @@ measurementCountDiv.innerHTML =
 const currentModeDiv = document.createElement('div')
 currentModeDiv.innerHTML = 'Mode: <span id="currentMode">Viewing</span>'
 
+const measurementTypeDiv = document.createElement('div')
+measurementTypeDiv.innerHTML = 'Type: <span id="measurementType">Static</span>'
+
 const lastMeasurementDiv = document.createElement('div')
 lastMeasurementDiv.id = 'lastMeasurement'
 
@@ -204,16 +233,20 @@ helpDiv.style.marginTop = '10px'
 helpDiv.style.fontSize = '11px'
 helpDiv.style.color = '#ccc'
 helpDiv.innerHTML =
-  'Click on objects to measure distances.<br />ESC to cancel current measurement.'
+  'Click on objects to measure distances.<br />' +
+  'Toggle Dynamic mode to track moving objects.<br />' +
+  'ESC to cancel current measurement.'
 
 infoPanel.appendChild(measurementCountDiv)
 infoPanel.appendChild(currentModeDiv)
+infoPanel.appendChild(measurementTypeDiv)
 infoPanel.appendChild(lastMeasurementDiv)
 infoPanel.appendChild(helpDiv)
 
 // Get references to the spans for updating
 const measurementCountSpan = document.getElementById('measurementCount')
 const currentModeSpan = document.getElementById('currentMode')
+const measurementTypeSpan = document.getElementById('measurementType')
 
 // Event listeners
 measurementTool.addEventListener('measurementCreated', (event) => {
@@ -266,6 +299,14 @@ snapEnabledCheckbox.addEventListener('change', (e) => {
     : SnapMode.DISABLED
 })
 
+dynamicMeasurementCheckbox.addEventListener('change', (e) => {
+  isDynamicMode = e.target.checked
+  measurementTool.setDynamicMode(isDynamicMode)
+  measurementTypeSpan.textContent = isDynamicMode ? 'Dynamic' : 'Static'
+  measurementTypeSpan.style.color = isDynamicMode ? '#00ff00' : '#ffffff'
+  console.log(`Dynamic measurement mode: ${isDynamicMode ? 'ON' : 'OFF'}`)
+})
+
 // Add some programmatic measurements as examples
 measurementTool.addMeasurement(
   new THREE.Vector3(-2, 1.5, -2), // Top of cube1
@@ -275,6 +316,30 @@ measurementTool.addMeasurement(
 measurementTool.addMeasurement(
   new THREE.Vector3(0, 1.6, 0), // Top of sphere
   new THREE.Vector3(0, 0, 0) // Center of ground
+)
+
+// Add dynamic measurements that track moving objects
+// Measure distance between two moving cubes (top centers)
+measurementTool.addDynamicMeasurement(
+  cube1, // Start object
+  cube2, // End object
+  new THREE.Vector3(0, 0.5, 0), // Local position on cube1 (top center)
+  new THREE.Vector3(0, 0.5, 0) // Local position on cube2 (top center)
+)
+
+// Measure distance from a static point to the moving sphere
+measurementTool.addMeasurementToObject(
+  new THREE.Vector3(0, 0, 0), // Static ground center
+  sphereObj, // Moving sphere
+  new THREE.Vector3(0, 0, 0) // Local center of sphere
+)
+
+// Measure from moving sphere to moving cube
+measurementTool.addDynamicMeasurement(
+  sphereObj, // Moving sphere
+  cube3, // Moving cube
+  new THREE.Vector3(0, 0, 0), // Sphere center
+  new THREE.Vector3(0, 0.5, 0) // Cube top center
 )
 
 function updateUI() {
@@ -290,6 +355,9 @@ function customAnimation() {
   cube2.rotation.y = time * 0.7
   sphereObj.position.y = 0.8 + Math.sin(time) * 0.1
 
+  // Update dynamic measurements in real-time
+  measurementTool.updateDynamicMeasurements()
+
   // Render CSS2D labels
   css2dRenderer.render(scene, camera)
 }
@@ -300,8 +368,16 @@ sceneSetup.start(customAnimation)
 
 console.log('Measurements Example loaded! 📏')
 console.log('- Click "Start Measuring" to begin interactive measurement')
+console.log('- Toggle "Create Dynamic Measurements" for moving objects')
 console.log('- Click on objects to measure distances between points')
 console.log('- Use Undo/Clear to manage measurements')
 console.log('- Export/Import to save measurement data as JSON')
 console.log('- Configure snapping and visual settings')
 console.log('- Uses shared utilities for scene setup and object creation')
+console.log('')
+console.log('Pre-created Dynamic Measurements:')
+console.log('  • Red measurements track cube-to-cube distance (tops)')
+console.log('  • Yellow measurements track ground-to-sphere distance')
+console.log('  • Green measurements track sphere-to-cube distance')
+console.log('')
+console.log('Try toggling Dynamic mode and creating your own measurements!')
