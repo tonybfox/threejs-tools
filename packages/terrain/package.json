@@ -1,0 +1,24 @@
+{
+  "name": "@tonybfox/threejs-terrain",
+  "version": "0.0.1",
+  "main": "dist/index.js",
+  "module": "dist/index.mjs",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsup src/index.ts --format esm,cjs --dts",
+    "clean": "rm -rf dist"
+  },
+  "peerDependencies": {
+    "three": ">=0.150.0"
+  },
+  "keywords": [
+    "threejs",
+    "three",
+    "terrain",
+    "elevation",
+    "3d",
+    "mesh",
+    "topography"
+  ],
+  "description": "A terrain mesh creator for Three.js scenes that fetches elevation data and creates 3D terrain meshes"
+}

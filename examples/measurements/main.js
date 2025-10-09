@@ -21,7 +21,7 @@ css2dRenderer.setSize(window.innerWidth, window.innerHeight)
 css2dRenderer.domElement.style.position = 'absolute'
 css2dRenderer.domElement.style.top = '0'
 css2dRenderer.domElement.style.left = '0'
-css2dRenderer.domElement.style.pointerEvents = 'none'
+css2dRenderer.domElement.style.pointerEvents = 'none' // Container is non-interactive, but labels have pointerEvents: 'auto'
 document.body.appendChild(css2dRenderer.domElement)
 
 // Handle window resize for CSS2DRenderer
@@ -57,11 +57,40 @@ scene.add(group)
 
 // Initialize measurement tool
 const measurementTool = new MeasurementTool(scene, camera, {
+  domElement: renderer.domElement,
+  controls, // Pass the camera controls to disable during edit dragging
+})
+measurementTool.previewColor = 0x00ffff
+
+const measurementSettings = {
   snapEnabled: true,
   snapDistance: 0.05,
+  snapMode: SnapMode.VERTEX,
   lineColor: 0xff4444,
   labelColor: '#ffff00',
-  previewColor: 0x00ffff,
+  isDynamic: false,
+}
+
+measurementTool.setDefaultMeasurementOptions(measurementSettings)
+
+const getMeasurementTargets = () => {
+  const targets = []
+  group.traverse((object) => {
+    if (object instanceof THREE.Mesh) {
+      targets.push(object)
+    }
+  })
+  return targets
+}
+
+const createMeasurementOptions = (overrides = {}) => ({
+  snapEnabled: measurementSettings.snapEnabled,
+  snapMode: measurementSettings.snapMode,
+  snapDistance: measurementSettings.snapDistance,
+  lineColor: measurementSettings.lineColor,
+  labelColor: measurementSettings.labelColor,
+  isDynamic: measurementSettings.isDynamic,
+  ...overrides,
 })
 
 // Create control panel using UIHelpers
@@ -75,15 +104,10 @@ let isMeasuring = false
 
 const toggleButton = UIHelpers.createButton('Start Measuring', () => {
   if (!isMeasuring) {
-    // Get all meshes in the group for measurement targets
-    const targets = []
-    group.traverse((object) => {
-      if (object instanceof THREE.Mesh) {
-        targets.push(object)
-      }
+    measurementTool.enableInteraction({
+      ...measurementSettings,
+      targets: getMeasurementTargets(),
     })
-
-    measurementTool.enableInteraction(renderer.domElement, targets)
     isMeasuring = true
     toggleButton.textContent = 'Stop Measuring'
   } else {
@@ -107,6 +131,27 @@ const clearButton = UIHelpers.createButton(
     measurementTool.clearAll()
   },
   'danger'
+)
+
+const editButton = UIHelpers.createButton(
+  'Edit Last',
+  () => {
+    const measurements = measurementTool.getMeasurements()
+    if (measurements.length > 0) {
+      const lastMeasurement = measurements[measurements.length - 1]
+      // Get all meshes in the group for edit mode snapping
+      measurementTool.enterEditMode(lastMeasurement.id, getMeasurementTargets())
+    }
+  },
+  'secondary'
+)
+
+const exitEditButton = UIHelpers.createButton(
+  'Exit Edit Mode',
+  () => {
+    measurementTool.exitEditMode()
+  },
+  'secondary'
 )
 
 const exportButton = UIHelpers.createButton(
@@ -169,7 +214,10 @@ const snapDistanceSlider = UIHelpers.createSlider(
   0.5,
   0.05,
   (value) => {
-    measurementTool.snapDistance = parseFloat(value)
+    measurementSettings.snapDistance = parseFloat(value)
+    measurementTool.setDefaultMeasurementOptions({
+      snapDistance: measurementSettings.snapDistance,
+    })
   },
   'Snap Distance'
 )
@@ -203,11 +251,16 @@ let isDynamicMode = false
 controlPanel.appendChild(toggleButton)
 controlPanel.appendChild(undoButton)
 controlPanel.appendChild(clearButton)
+controlPanel.appendChild(editButton)
+controlPanel.appendChild(exitEditButton)
 controlPanel.appendChild(exportButton)
 controlPanel.appendChild(importButton)
 controlPanel.appendChild(snapContainer)
 controlPanel.appendChild(snapDistanceSlider)
 controlPanel.appendChild(dynamicContainer)
+
+// Initially hide the exit edit button
+exitEditButton.style.display = 'none'
 
 // Create info panel for measurement stats
 const infoPanel = UIHelpers.createControlPanel(
@@ -235,7 +288,8 @@ helpDiv.style.color = '#ccc'
 helpDiv.innerHTML =
   'Click on objects to measure distances.<br />' +
   'Toggle Dynamic mode to track moving objects.<br />' +
-  'ESC to cancel current measurement.'
+  'ESC to cancel current measurement.<br />' +
+  '<strong>Double-click on a label to edit it!</strong>'
 
 infoPanel.appendChild(measurementCountDiv)
 infoPanel.appendChild(currentModeDiv)
@@ -274,6 +328,32 @@ measurementTool.addEventListener('previewUpdated', (event) => {
   // Could display in a tooltip or status bar
 })
 
+measurementTool.addEventListener('editModeEntered', (event) => {
+  currentModeSpan.textContent = 'Editing'
+  // Show exit edit button and hide edit button
+  exitEditButton.style.display = 'block'
+  editButton.style.display = 'none'
+  console.log('Edit mode entered for measurement:', event.measurement.id)
+})
+
+measurementTool.addEventListener('editModeExited', (event) => {
+  currentModeSpan.textContent = isMeasuring ? 'Measuring' : 'Viewing'
+  // Hide exit edit button and show edit button
+  exitEditButton.style.display = 'none'
+  editButton.style.display = 'block'
+  console.log('Edit mode exited for measurement:', event.measurement.id)
+})
+
+measurementTool.addEventListener('measurementUpdated', (event) => {
+  console.log(
+    'Measurement updated:',
+    event.measurement.id,
+    'New distance:',
+    event.measurement.distance.toFixed(2)
+  )
+  lastMeasurementDiv.textContent = `Updated: ${event.measurement.distance.toFixed(2)}m`
+})
+
 // Additional event handlers for checkbox and file input
 fileInput.addEventListener('change', (event) => {
   const file = event.target.files[0]
@@ -293,33 +373,54 @@ fileInput.addEventListener('change', (event) => {
 })
 
 snapEnabledCheckbox.addEventListener('change', (e) => {
-  measurementTool.snapEnabled = e.target.checked
-  measurementTool.snapMode = e.target.checked
+  measurementSettings.snapEnabled = e.target.checked
+  measurementSettings.snapMode = measurementSettings.snapEnabled
     ? SnapMode.VERTEX
     : SnapMode.DISABLED
+  measurementTool.setDefaultMeasurementOptions({
+    snapEnabled: measurementSettings.snapEnabled,
+    snapMode: measurementSettings.snapMode,
+  })
 })
 
 dynamicMeasurementCheckbox.addEventListener('change', (e) => {
   isDynamicMode = e.target.checked
+  measurementSettings.isDynamic = isDynamicMode
   measurementTool.setDynamicMode(isDynamicMode)
   measurementTypeSpan.textContent = isDynamicMode ? 'Dynamic' : 'Static'
   measurementTypeSpan.style.color = isDynamicMode ? '#00ff00' : '#ffffff'
   console.log(`Dynamic measurement mode: ${isDynamicMode ? 'ON' : 'OFF'}`)
 })
 
-// Add some programmatic measurements as examples
-measurementTool.addMeasurement(
-  new THREE.Vector3(-2, 1.5, -2), // Top of cube1
-  new THREE.Vector3(2, 1.5, 2) // Top of cube2
-)
+// Add some programmatic measurements as examples using the unified addMeasurement method
 
-// Measure from moving sphere to moving cube
-measurementTool.addDynamicMeasurement(
-  sphereObj, // Moving sphere
-  cube3, // Moving cube
-  new THREE.Vector3(0, 0, 0), // Sphere center
-  new THREE.Vector3(0, 0.5, 0) // Cube top center
-)
+// 1. Static measurement between two fixed positions (Vector3 to Vector3)
+const cube1TopLocal = new THREE.Vector3(0.5, 0.5, 0)
+const cube2TopLocal = new THREE.Vector3(0.5, 0.5, 0)
+const cube1TopWorld = cube1.localToWorld(cube1TopLocal.clone())
+const cube2TopWorld = cube2.localToWorld(cube2TopLocal.clone())
+
+measurementTool.addMeasurement(cube1TopWorld, cube2TopWorld, {
+  ...createMeasurementOptions({ isDynamic: false }),
+  startObject: cube1,
+  startLocalPosition: cube1TopLocal,
+  endObject: cube2,
+  endLocalPosition: cube2TopLocal,
+})
+
+// 2. Dynamic measurement between moving objects (Object3D to Object3D)
+const sphereCenterLocal = new THREE.Vector3(0, 0, 0)
+const cube3TopLocal = new THREE.Vector3(0, 0.5, 0)
+const sphereCenterWorld = sphereObj.localToWorld(sphereCenterLocal.clone())
+const cube3TopWorld = cube3.localToWorld(cube3TopLocal.clone())
+
+measurementTool.addMeasurement(sphereCenterWorld, cube3TopWorld, {
+  ...createMeasurementOptions({ isDynamic: true }),
+  startObject: sphereObj,
+  startLocalPosition: sphereCenterLocal,
+  endObject: cube3,
+  endLocalPosition: cube3TopLocal,
+})
 
 function updateUI() {
   const measurements = measurementTool.getMeasurements()
@@ -354,9 +455,10 @@ console.log('- Export/Import to save measurement data as JSON')
 console.log('- Configure snapping and visual settings')
 console.log('- Uses shared utilities for scene setup and object creation')
 console.log('')
-console.log('Pre-created Dynamic Measurements:')
-console.log('  • Red measurements track cube-to-cube distance (tops)')
-console.log('  • Yellow measurements track ground-to-sphere distance')
-console.log('  • Green measurements track sphere-to-cube distance')
+console.log('Pre-created Measurements (using unified addMeasurement API):')
+console.log('  • Static: Cube-to-cube distance (fixed positions)')
+console.log('  • Dynamic: Sphere-to-cube tracking (moving objects)')
+console.log('  • Mixed: Ground-to-sphere (static to dynamic)')
+console.log('  • Custom: Ground measurement with specific settings')
 console.log('')
 console.log('Try toggling Dynamic mode and creating your own measurements!')

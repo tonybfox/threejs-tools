@@ -13,6 +13,7 @@ export default defineConfig({
       '@tonybfox/threejs-asset-loader': resolve(
         '../packages/asset-loader/src/index.ts'
       ),
+      '@tonybfox/threejs-terrain': resolve('../packages/terrain/src/index.ts'),
     },
   },
   build: {
@@ -24,6 +25,7 @@ export default defineConfig({
         grid: './grid/index.html',
         measurements: './measurements/index.html',
         assetLoader: './asset-loader/index.html',
+        terrain: './terrain/index.html',
       },
     },
   },

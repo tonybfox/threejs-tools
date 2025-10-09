@@ -7,6 +7,8 @@ import {
   MeasurementPointData,
   MeasurementToolOptions,
   MeasurementToolEvents,
+  MeasurementCreationOptions,
+  MeasurementOptions,
   SnapMode,
   SnapResult,
 } from './MeasurementTypes'
@@ -46,35 +48,46 @@ export class MeasurementTool extends THREE.EventDispatcher<MeasurementToolEvents
   // Interactive mode properties
   private isInteractive: boolean = false
   private domElement: HTMLElement | null = null
-  private targetObjects: THREE.Object3D[] = []
+  private controls: { enabled: boolean } | null = null
+  private defaultTargets: THREE.Object3D[] = []
+  private activeTargets: THREE.Object3D[] = []
   private currentMeasurement: Partial<Measurement> | null = null
-  private currentStartObject: THREE.Object3D | null = null
-  private currentStartLocalPos: THREE.Vector3 | null = null
+  private activeInteractionOptions: MeasurementOptions | null = null
+  private pendingMeasurementOptions: MeasurementOptions | null = null
   private previewLine: THREE.Line | null = null
   private previewLabel: CSS2DObject | null = null
   private snapMarker: THREE.Sprite | null = null
   private originalCursor: string = ''
   private cursorHidden: boolean = false
 
-  // Configuration
-  public snapEnabled: boolean = true
-  public snapDistance: number = 0.05
-  public snapMode: SnapMode = SnapMode.VERTEX
-  public previewColor: number = 0x00ffff
-  public lineColor: number = 0xff0000
-  public labelColor: string = '#ffffff'
-  public lineWidth: number = 2
-  public fontSize: number = 16
-  public fontFamily: string = 'Arial, sans-serif'
-  public markerColor: number = 0x00ff00
-  public markerSize: number = 0.08
-  public markerVisible: boolean = true
+  // Configuration defaults
+  private defaultOptions: MeasurementOptions = {
+    lineColor: 0xff0000,
+    labelColor: '#ffffff',
+    lineWidth: 2,
+    fontSize: 16,
+    fontFamily: 'Arial, sans-serif',
+    snapMode: SnapMode.VERTEX,
+    snapEnabled: true,
+    snapDistance: 0.05,
+    targets: [],
+    isDynamic: false,
+  }
+  private previewColor: number = 0x00ffff
+  private markerColor: number = 0x00ff00
+  private markerSize: number = 0.08
+  private markerVisible: boolean = true
 
-  // Dynamic measurement mode
-  private dynamicMode: boolean = false
+  // Edit mode properties
+  private isEditMode: boolean = false
+  private editingMeasurement: Measurement | null = null
+  private editingPoint: 'start' | 'end' | null = null
+  private startEditSprite: THREE.Sprite | null = null
+  private endEditSprite: THREE.Sprite | null = null
+  private editSpriteMaterial: THREE.SpriteMaterial | null = null
+  private isDragging: boolean = false
 
   // Materials
-  private lineMaterial: THREE.LineBasicMaterial
   private previewMaterial: THREE.LineDashedMaterial
   private markerMaterial: THREE.SpriteMaterial
 
@@ -152,6 +165,41 @@ export class MeasurementTool extends THREE.EventDispatcher<MeasurementToolEvents
     return texture
   }
 
+  /**
+   * Create a dot texture for edit point sprites
+   */
+  private createDotTexture(): THREE.Texture {
+    const size = 64
+    const canvas = document.createElement('canvas')
+    canvas.width = size
+    canvas.height = size
+
+    const context = canvas.getContext('2d')!
+    const centerX = size / 2
+    const centerY = size / 2
+    const radius = 12
+
+    // Clear canvas
+    context.clearRect(0, 0, size, size)
+
+    // Draw white circle
+    context.fillStyle = '#ffffff'
+    context.beginPath()
+    context.arc(centerX, centerY, radius, 0, Math.PI * 2)
+    context.fill()
+
+    // Add black outline
+    context.strokeStyle = '#000000'
+    context.lineWidth = 3
+    context.beginPath()
+    context.arc(centerX, centerY, radius, 0, Math.PI * 2)
+    context.stroke()
+
+    const texture = new THREE.CanvasTexture(canvas)
+    texture.needsUpdate = true
+    return texture
+  }
+
   constructor(
     scene: THREE.Scene,
     camera: THREE.Camera,
@@ -162,18 +210,22 @@ export class MeasurementTool extends THREE.EventDispatcher<MeasurementToolEvents
     this.scene = scene
     this.camera = camera
 
-    // Apply options
-    Object.assign(this, options)
+    // Apply options (excluding domElement and controls which need special handling)
+    const { domElement, controls } = options
 
-    // Initialize materials
-    this.lineMaterial = new THREE.LineBasicMaterial({
-      color: this.lineColor,
-      linewidth: this.lineWidth,
-    })
+    // Set DOM element if provided
+    if (domElement) {
+      this.domElement = domElement
+    }
+
+    // Set controls if provided
+    if (controls) {
+      this.controls = controls
+    }
 
     this.previewMaterial = new THREE.LineDashedMaterial({
       color: this.previewColor,
-      linewidth: this.lineWidth,
+      linewidth: this.defaultOptions.lineWidth,
       dashSize: 0.1,
       gapSize: 0.05,
     })
@@ -187,49 +239,55 @@ export class MeasurementTool extends THREE.EventDispatcher<MeasurementToolEvents
       depthTest: false, // Always render in front of other objects
     })
 
+    this.editSpriteMaterial = new THREE.SpriteMaterial({
+      map: this.createDotTexture(),
+      color: 0xffaa00, // Orange color for edit points
+      transparent: true,
+      opacity: 0.9,
+      sizeAttenuation: false,
+      depthTest: false,
+    })
+
     // Set up raycaster
     this.raycaster.params.Line.threshold = 0.01
     this.raycaster.params.Points.threshold = 0.01
   }
 
   /**
-   * Create a static measurement point from a Vector3 position
+   * Create a measurement point that optionally tracks a scene object.
    */
-  private createStaticPoint(position: THREE.Vector3): MeasurementPoint {
-    return {
-      position: position.clone(),
-      isDynamic: false,
-    }
-  }
-
-  /**
-   * Create a dynamic measurement point attached to an object
-   */
-  private createDynamicPoint(
-    object: THREE.Object3D,
-    localPosition: THREE.Vector3 = new THREE.Vector3()
+  private createMeasurementPoint(
+    worldPosition: THREE.Vector3,
+    object?: THREE.Object3D,
+    localPosition?: THREE.Vector3
   ): MeasurementPoint {
-    const worldPosition = localPosition.clone()
-    object.localToWorld(worldPosition)
+    if (!object) {
+      return { position: worldPosition.clone() }
+    }
+
+    const anchorLocal =
+      localPosition?.clone() ?? object.worldToLocal(worldPosition.clone())
+    const resolvedWorld = object.localToWorld(anchorLocal.clone())
 
     return {
-      position: worldPosition.clone(),
-      sourceObject: object,
-      localPosition: localPosition.clone(),
-      isDynamic: true,
+      position: resolvedWorld,
+      anchor: {
+        object,
+        localPosition: anchorLocal,
+      },
     }
   }
 
   /**
-   * Update a measurement point's world position from its object (if dynamic)
+   * Update a measurement point's world position from its anchor (if dynamic)
    */
   private updateMeasurementPoint(point: MeasurementPoint): boolean {
-    if (!point.isDynamic || !point.sourceObject || !point.localPosition) {
+    if (!point.anchor) {
       return false
     }
 
-    const newWorldPosition = point.localPosition.clone()
-    point.sourceObject.localToWorld(newWorldPosition)
+    const newWorldPosition = point.anchor.localPosition.clone()
+    point.anchor.object.localToWorld(newWorldPosition)
 
     if (!point.position.equals(newWorldPosition)) {
       point.position.copy(newWorldPosition)
@@ -240,15 +298,87 @@ export class MeasurementTool extends THREE.EventDispatcher<MeasurementToolEvents
   }
 
   /**
-   * Add a measurement programmatically using Vector3 positions (static)
+   * Add a measurement between two world positions with optional attachments.
+   *
+   * @param start - Starting world position
+   * @param end - Ending world position
+   * @param options - Optional configuration for the measurement
    */
-  addMeasurement(start: THREE.Vector3, end: THREE.Vector3): Measurement {
-    const startPoint = this.createStaticPoint(start)
-    const endPoint = this.createStaticPoint(end)
-    return this.addMeasurementFromPoints(startPoint, endPoint)
+  addMeasurement(
+    start: THREE.Vector3,
+    end: THREE.Vector3,
+    options: MeasurementCreationOptions = {}
+  ): Measurement {
+    const hasAnchors = Boolean(options.startObject || options.endObject)
+    const resolvedOptions = this.resolveMeasurementOptions(
+      options,
+      options.isDynamic ?? hasAnchors
+    )
+
+    const startPoint = this.createMeasurementPoint(
+      start,
+      options.startObject,
+      options.startLocalPosition
+    )
+    const endPoint = this.createMeasurementPoint(
+      end,
+      options.endObject,
+      options.endLocalPosition
+    )
+
+    return this.addMeasurementFromPoints(startPoint, endPoint, resolvedOptions, {
+      id: options.id,
+    })
+  }
+
+  private resolveMeasurementOptions(
+    overrides: MeasurementCreationOptions = {},
+    inferredDynamic?: boolean
+  ): MeasurementOptions {
+    let targetCandidates: THREE.Object3D[] | undefined
+
+    if (overrides.targets && overrides.targets.length > 0) {
+      targetCandidates = overrides.targets
+    } else if (this.defaultOptions.targets.length > 0) {
+      targetCandidates = this.defaultOptions.targets
+    } else if (this.defaultTargets.length > 0) {
+      targetCandidates = this.defaultTargets
+    }
+
+    const targets =
+      targetCandidates && targetCandidates.length > 0
+        ? targetCandidates
+        : this.getAllMeshes()
+
+    const isDynamic =
+      overrides.isDynamic ??
+      inferredDynamic ??
+      this.defaultOptions.isDynamic
+
+    return {
+      lineColor: overrides.lineColor ?? this.defaultOptions.lineColor,
+      labelColor: overrides.labelColor ?? this.defaultOptions.labelColor,
+      lineWidth: overrides.lineWidth ?? this.defaultOptions.lineWidth,
+      fontSize: overrides.fontSize ?? this.defaultOptions.fontSize,
+      fontFamily: overrides.fontFamily ?? this.defaultOptions.fontFamily,
+      snapMode: overrides.snapMode ?? this.defaultOptions.snapMode,
+      snapEnabled: overrides.snapEnabled ?? this.defaultOptions.snapEnabled,
+      snapDistance: overrides.snapDistance ?? this.defaultOptions.snapDistance,
+      targets,
+      isDynamic,
+    }
+  }
+
+  private getActiveMeasurementOptions(): MeasurementOptions | null {
+    if (this.isEditMode && this.editingMeasurement) {
+      return this.editingMeasurement.options
+    }
+
+    return this.activeInteractionOptions
   }
 
   /**
+   * @deprecated Use addMeasurement(obj1, obj2, { startLocalPos, endLocalPos }) instead
    * Add a dynamic measurement between two objects
    */
   addDynamicMeasurement(
@@ -257,12 +387,19 @@ export class MeasurementTool extends THREE.EventDispatcher<MeasurementToolEvents
     startLocalPos: THREE.Vector3 = new THREE.Vector3(),
     endLocalPos: THREE.Vector3 = new THREE.Vector3()
   ): Measurement {
-    const startPoint = this.createDynamicPoint(startObject, startLocalPos)
-    const endPoint = this.createDynamicPoint(endObject, endLocalPos)
-    return this.addMeasurementFromPoints(startPoint, endPoint)
+    const startWorld = startObject.localToWorld(startLocalPos.clone())
+    const endWorld = endObject.localToWorld(endLocalPos.clone())
+
+    return this.addMeasurement(startWorld, endWorld, {
+      startObject,
+      endObject,
+      startLocalPosition: startLocalPos,
+      endLocalPosition: endLocalPos,
+    })
   }
 
   /**
+   * @deprecated Use addMeasurement(staticPos, targetObject, { endLocalPos }) instead
    * Add a measurement from a static point to a dynamic object
    */
   addMeasurementToObject(
@@ -270,9 +407,12 @@ export class MeasurementTool extends THREE.EventDispatcher<MeasurementToolEvents
     targetObject: THREE.Object3D,
     objectLocalPos: THREE.Vector3 = new THREE.Vector3()
   ): Measurement {
-    const startPoint = this.createStaticPoint(staticPos)
-    const endPoint = this.createDynamicPoint(targetObject, objectLocalPos)
-    return this.addMeasurementFromPoints(startPoint, endPoint)
+    const endWorld = targetObject.localToWorld(objectLocalPos.clone())
+
+    return this.addMeasurement(staticPos, endWorld, {
+      endObject: targetObject,
+      endLocalPosition: objectLocalPos,
+    })
   }
 
   /**
@@ -280,9 +420,11 @@ export class MeasurementTool extends THREE.EventDispatcher<MeasurementToolEvents
    */
   private addMeasurementFromPoints(
     start: MeasurementPoint,
-    end: MeasurementPoint
+    end: MeasurementPoint,
+    options: MeasurementOptions,
+    context?: { id?: string }
   ): Measurement {
-    const id = this.generateId()
+    const id = context?.id || this.generateId()
     const distance = start.position.distanceTo(end.position)
 
     // Create line geometry
@@ -290,20 +432,22 @@ export class MeasurementTool extends THREE.EventDispatcher<MeasurementToolEvents
       start.position,
       end.position,
     ])
-    const line = new THREE.Line(geometry, this.lineMaterial.clone())
+    const line = new THREE.Line(
+      geometry,
+      new THREE.LineBasicMaterial({
+        color: options.lineColor,
+        linewidth: options.lineWidth,
+      })
+    )
 
     // Create label
-    const label = this.createLabel(distance)
+    const label = this.createLabel(distance, options)
     const midpoint = start.position
       .clone()
       .add(end.position)
       .multiplyScalar(0.5)
     label.position.copy(midpoint)
 
-    // Determine if measurement is dynamic
-    const isDynamic = start.isDynamic || end.isDynamic
-
-    // Create measurement object
     const measurement: Measurement = {
       id,
       start,
@@ -311,7 +455,10 @@ export class MeasurementTool extends THREE.EventDispatcher<MeasurementToolEvents
       line,
       label,
       distance,
-      isDynamic,
+      options: {
+        ...options,
+        targets: [...options.targets],
+      },
     }
 
     // Add to scene and tracking
@@ -336,7 +483,7 @@ export class MeasurementTool extends THREE.EventDispatcher<MeasurementToolEvents
     let updated = false
 
     for (const measurement of this.measurements) {
-      if (!measurement.isDynamic) continue
+      if (!measurement.options.isDynamic) continue
 
       let needsUpdate = false
 
@@ -381,39 +528,259 @@ export class MeasurementTool extends THREE.EventDispatcher<MeasurementToolEvents
    * Set whether interactive measurements should be dynamic or static
    */
   setDynamicMode(enabled: boolean): void {
-    this.dynamicMode = enabled
+    this.setDefaultMeasurementOptions({ isDynamic: enabled })
   }
 
   /**
    * Get the current dynamic mode state
    */
   getDynamicMode(): boolean {
-    return this.dynamicMode
+    return this.defaultOptions.isDynamic
+  }
+
+  /**
+   * Enter edit mode for a specific measurement
+   * Shows edit sprites at the measurement endpoints
+   * @param measurementIdOrIndex - The measurement ID or index
+   * @param targets - Optional target objects for snapping during edit
+   */
+  enterEditMode(
+    measurementIdOrIndex: string | number,
+    targets?: THREE.Object3D[]
+  ): void {
+    // Exit any current edit mode
+    this.exitEditMode()
+
+    // Find the measurement
+    let measurement: Measurement | undefined
+    if (typeof measurementIdOrIndex === 'string') {
+      measurement = this.measurements.find((m) => m.id === measurementIdOrIndex)
+    } else {
+      measurement = this.measurements[measurementIdOrIndex]
+    }
+
+    if (!measurement) {
+      console.warn('Measurement not found:', measurementIdOrIndex)
+      return
+    }
+
+    if (!this.domElement) {
+      console.warn(
+        'DOM element not set. Call setDomElement() or enableInteraction() first.'
+      )
+      return
+    }
+
+    this.isEditMode = true
+    this.editingMeasurement = measurement
+
+    // Select targets for editing
+    const resolvedTargets =
+      targets && targets.length > 0
+        ? targets
+        : measurement.options.targets.length > 0
+        ? measurement.options.targets
+        : this.getAllMeshes()
+
+    this.activeTargets = resolvedTargets
+
+    // Persist overrides so future edits reuse them
+    if (targets && targets.length > 0) {
+      measurement.options.targets = [...targets]
+    }
+
+    // Create edit sprites at the endpoints
+    this.createEditSprites()
+
+    // Set up event listeners for dragging
+    this.domElement.addEventListener('mousedown', this.onEditMouseDown)
+    this.domElement.addEventListener('mousemove', this.onEditMouseMove)
+    this.domElement.addEventListener('mouseup', this.onEditMouseUp)
+    this.domElement.style.cursor = 'pointer'
+
+    this.dispatchEvent({
+      type: 'editModeEntered',
+      measurement,
+    })
+  }
+
+  /**
+   * Exit edit mode
+   */
+  exitEditMode(): void {
+    if (!this.isEditMode) return
+
+    const measurement = this.editingMeasurement
+
+    // Remove edit sprites
+    this.removeEditSprites()
+
+    // Remove event listeners
+    if (this.domElement) {
+      this.domElement.removeEventListener('mousedown', this.onEditMouseDown)
+      this.domElement.removeEventListener('mousemove', this.onEditMouseMove)
+      this.domElement.removeEventListener('mouseup', this.onEditMouseUp)
+      this.domElement.style.cursor = this.isInteractive
+        ? 'crosshair'
+        : 'default'
+    }
+
+    this.isEditMode = false
+    this.editingMeasurement = null
+    this.editingPoint = null
+    this.isDragging = false
+    this.activeTargets = []
+
+    if (measurement) {
+      this.dispatchEvent({
+        type: 'editModeExited',
+        measurement,
+      })
+    }
+  }
+
+  /**
+   * Set the DOM element for interactions (both measurement and edit mode)
+   */
+  setDomElement(domElement: HTMLElement): void {
+    this.domElement = domElement
+  }
+
+  /**
+   * Set the camera controls to disable during edit dragging
+   */
+  setControls(controls: { enabled: boolean }): void {
+    this.controls = controls
+  }
+
+  /**
+   * Set target objects for snapping (used in both interactive mode and edit mode)
+   */
+  setTargetObjects(targets: THREE.Object3D[]): void {
+    this.defaultTargets = targets.length > 0 ? targets : this.getAllMeshes()
+    this.defaultOptions.targets = [...this.defaultTargets]
+  }
+
+  /**
+   * Update default measurement options used when none are provided explicitly.
+   */
+  setDefaultMeasurementOptions(
+    options: Partial<MeasurementCreationOptions>
+  ): void {
+    if (options.lineColor !== undefined) {
+      this.defaultOptions.lineColor = options.lineColor
+    }
+    if (options.labelColor !== undefined) {
+      this.defaultOptions.labelColor = options.labelColor
+    }
+    if (options.lineWidth !== undefined) {
+      this.defaultOptions.lineWidth = options.lineWidth
+    }
+    if (options.fontSize !== undefined) {
+      this.defaultOptions.fontSize = options.fontSize
+    }
+    if (options.fontFamily !== undefined) {
+      this.defaultOptions.fontFamily = options.fontFamily
+    }
+    if (options.snapMode !== undefined) {
+      this.defaultOptions.snapMode = options.snapMode
+    }
+    if (options.snapEnabled !== undefined) {
+      this.defaultOptions.snapEnabled = options.snapEnabled
+    }
+    if (options.snapDistance !== undefined) {
+      this.defaultOptions.snapDistance = options.snapDistance
+    }
+    if (options.targets !== undefined) {
+      this.defaultTargets = options.targets
+      this.defaultOptions.targets = [...options.targets]
+      if (this.activeInteractionOptions) {
+        this.activeInteractionOptions.targets = [...options.targets]
+        this.activeTargets = options.targets
+      }
+    }
+    if (options.isDynamic !== undefined) {
+      this.defaultOptions.isDynamic = options.isDynamic
+      if (this.activeInteractionOptions) {
+        this.activeInteractionOptions.isDynamic = options.isDynamic
+      }
+    }
+
+    if (this.activeInteractionOptions) {
+      if (options.lineColor !== undefined) {
+        this.activeInteractionOptions.lineColor = options.lineColor
+      }
+      if (options.labelColor !== undefined) {
+        this.activeInteractionOptions.labelColor = options.labelColor
+      }
+      if (options.lineWidth !== undefined) {
+        this.activeInteractionOptions.lineWidth = options.lineWidth
+      }
+      if (options.fontSize !== undefined) {
+        this.activeInteractionOptions.fontSize = options.fontSize
+      }
+      if (options.fontFamily !== undefined) {
+        this.activeInteractionOptions.fontFamily = options.fontFamily
+      }
+      if (options.snapMode !== undefined) {
+        this.activeInteractionOptions.snapMode = options.snapMode
+      }
+      if (options.snapEnabled !== undefined) {
+        this.activeInteractionOptions.snapEnabled = options.snapEnabled
+      }
+      if (options.snapDistance !== undefined) {
+        this.activeInteractionOptions.snapDistance = options.snapDistance
+      }
+    }
+  }
+
+  /**
+   * Disable camera controls (used during edit dragging)
+   */
+  private disableControls(): void {
+    if (this.controls) {
+      this.controls.enabled = false
+    }
+  }
+
+  /**
+   * Enable camera controls (used after edit dragging)
+   */
+  private enableControls(): void {
+    if (this.controls) {
+      this.controls.enabled = true
+    }
   }
 
   /**
    * Enable interactive measurement mode
    */
-  enableInteraction(
-    domElement: HTMLElement,
-    targets: THREE.Object3D[] = []
-  ): void {
+  enableInteraction(options: MeasurementCreationOptions = {}): void {
     if (this.isInteractive) {
       this.disableInteraction()
     }
 
+    const resolvedOptions = this.resolveMeasurementOptions(options)
+    this.activeInteractionOptions = {
+      ...resolvedOptions,
+      targets: [...resolvedOptions.targets],
+    }
+    this.activeTargets =
+      this.activeInteractionOptions.targets.length > 0
+        ? this.activeInteractionOptions.targets
+        : this.getAllMeshes()
+
     this.isInteractive = true
-    this.domElement = domElement
-    this.targetObjects = targets.length > 0 ? targets : this.getAllMeshes()
 
-    // Add event listeners
-    domElement.addEventListener('click', this.onMouseClick)
-    domElement.addEventListener('mousemove', this.onMouseMove)
-    domElement.addEventListener('keydown', this.onKeyDown)
+    if (this.domElement) {
+      // Add event listeners
+      this.domElement.addEventListener('click', this.onMouseClick)
+      this.domElement.addEventListener('mousemove', this.onMouseMove)
+      this.domElement.addEventListener('keydown', this.onKeyDown)
 
-    // Set cursor style
-    domElement.style.cursor = 'crosshair'
-
+      // Set cursor style
+      this.domElement.style.cursor = 'crosshair'
+    }
     // Create snap marker
     this.createSnapMarker()
 
@@ -425,6 +792,9 @@ export class MeasurementTool extends THREE.EventDispatcher<MeasurementToolEvents
    */
   disableInteraction(): void {
     if (!this.isInteractive || !this.domElement) return
+
+    // Exit edit mode if active
+    this.exitEditMode()
 
     // Remove event listeners
     this.domElement.removeEventListener('click', this.onMouseClick)
@@ -442,8 +812,8 @@ export class MeasurementTool extends THREE.EventDispatcher<MeasurementToolEvents
     this.removeSnapMarker()
 
     this.isInteractive = false
-    this.domElement = null
-    this.targetObjects = []
+    this.activeInteractionOptions = null
+    this.activeTargets = []
 
     this.dispatchEvent({ type: 'ended' })
   }
@@ -512,11 +882,10 @@ export class MeasurementTool extends THREE.EventDispatcher<MeasurementToolEvents
   ): MeasurementPointData {
     return {
       position: point.position.toArray() as [number, number, number],
-      localPosition: point.localPosition?.toArray() as
-        | [number, number, number]
-        | undefined,
-      isDynamic: point.isDynamic,
-      objectId: point.sourceObject?.uuid, // Note: object references can't be fully serialized
+      anchorObjectId: point.anchor?.object.uuid,
+      anchorLocalPosition: point.anchor
+        ? (point.anchor.localPosition.toArray() as [number, number, number])
+        : undefined,
     }
   }
 
@@ -530,7 +899,18 @@ export class MeasurementTool extends THREE.EventDispatcher<MeasurementToolEvents
       start: this.serializeMeasurementPoint(measurement.start),
       end: this.serializeMeasurementPoint(measurement.end),
       distance: measurement.distance,
-      isDynamic: measurement.isDynamic,
+      options: {
+        snapMode: measurement.options.snapMode,
+        snapEnabled: measurement.options.snapEnabled,
+        snapDistance: measurement.options.snapDistance,
+        lineColor: measurement.options.lineColor,
+        labelColor: measurement.options.labelColor,
+        lineWidth: measurement.options.lineWidth,
+        fontSize: measurement.options.fontSize,
+        fontFamily: measurement.options.fontFamily,
+        isDynamic: measurement.options.isDynamic,
+        targetObjectIds: measurement.options.targets.map((obj) => obj.uuid),
+      },
     }))
   }
 
@@ -542,11 +922,54 @@ export class MeasurementTool extends THREE.EventDispatcher<MeasurementToolEvents
     // Clear existing measurements
     this.clearAll()
 
-    // Create measurements from data
     data.forEach((item) => {
       const start = new THREE.Vector3().fromArray(item.start.position)
       const end = new THREE.Vector3().fromArray(item.end.position)
-      this.addMeasurement(start, end)
+
+      const startObject = item.start.anchorObjectId
+        ? (this.scene.getObjectByProperty(
+            'uuid',
+            item.start.anchorObjectId
+          ) as THREE.Object3D | null)
+        : null
+      const endObject = item.end.anchorObjectId
+        ? (this.scene.getObjectByProperty(
+            'uuid',
+            item.end.anchorObjectId
+          ) as THREE.Object3D | null)
+        : null
+
+      const restoredTargets =
+        item.options.targetObjectIds && item.options.targetObjectIds.length > 0
+          ? (item.options.targetObjectIds
+              .map((uuid) => this.scene.getObjectByProperty('uuid', uuid))
+              .filter((obj) => obj !== undefined) as THREE.Object3D[])
+          : undefined
+
+      this.addMeasurement(start, end, {
+        id: item.id,
+        targets:
+          restoredTargets && restoredTargets.length > 0
+            ? restoredTargets
+            : undefined,
+        snapMode: item.options.snapMode,
+        snapEnabled: item.options.snapEnabled,
+        snapDistance: item.options.snapDistance,
+        lineColor: item.options.lineColor,
+        labelColor: item.options.labelColor,
+        lineWidth: item.options.lineWidth,
+        fontSize: item.options.fontSize,
+        fontFamily: item.options.fontFamily,
+        isDynamic: item.options.isDynamic,
+        startObject: startObject || undefined,
+        startLocalPosition: item.start.anchorLocalPosition
+          ? new THREE.Vector3().fromArray(item.start.anchorLocalPosition)
+          : undefined,
+        endObject: endObject || undefined,
+        endLocalPosition: item.end.anchorLocalPosition
+          ? new THREE.Vector3().fromArray(item.end.anchorLocalPosition)
+          : undefined,
+      })
     })
   }
 
@@ -554,16 +977,23 @@ export class MeasurementTool extends THREE.EventDispatcher<MeasurementToolEvents
    * Dispose of all resources
    */
   dispose(): void {
+    this.exitEditMode()
     this.disableInteraction()
     this.clearAll()
 
-    this.lineMaterial.dispose()
     this.previewMaterial.dispose()
 
     if (this.markerMaterial.map) {
       this.markerMaterial.map.dispose()
     }
     this.markerMaterial.dispose()
+
+    if (this.editSpriteMaterial) {
+      if (this.editSpriteMaterial.map) {
+        this.editSpriteMaterial.map.dispose()
+      }
+      this.editSpriteMaterial.dispose()
+    }
   }
 
   // Private methods
@@ -629,7 +1059,12 @@ export class MeasurementTool extends THREE.EventDispatcher<MeasurementToolEvents
   }
 
   private createSnapMarker(): void {
-    if (!this.markerVisible || this.snapMarker) return
+    if (!this.markerVisible) return
+
+    // Remove existing snap marker if it exists
+    if (this.snapMarker) {
+      this.scene.remove(this.snapMarker)
+    }
 
     this.snapMarker = new THREE.Sprite(this.markerMaterial)
     this.snapMarker.scale.setScalar(this.markerSize)
@@ -668,6 +1103,13 @@ export class MeasurementTool extends THREE.EventDispatcher<MeasurementToolEvents
   private startMeasurement(snapResult: SnapResult): void {
     const id = this.generateId()
     const point = snapResult.point
+    const baseOptions =
+      this.activeInteractionOptions ?? this.defaultOptions
+    const measurementOptions: MeasurementOptions = {
+      ...baseOptions,
+      targets: [...baseOptions.targets],
+    }
+    this.pendingMeasurementOptions = measurementOptions
 
     // Hide snap marker temporarily while creating preview
     this.hideSnapMarker()
@@ -679,26 +1121,14 @@ export class MeasurementTool extends THREE.EventDispatcher<MeasurementToolEvents
     this.scene.add(this.previewLine)
 
     // Create preview label
-    this.previewLabel = this.createLabel(0)
+    this.previewLabel = this.createLabel(0, measurementOptions)
     this.previewLabel.position.copy(point)
     this.scene.add(this.previewLabel)
 
-    // Create measurement point based on dynamic mode
-    let startPoint: MeasurementPoint
-    if (this.dynamicMode && snapResult.object) {
-      // Calculate local position in the object's coordinate system
-      const localPos = snapResult.object.worldToLocal(point.clone())
-      startPoint = this.createDynamicPoint(snapResult.object, localPos)
-
-      // Store object reference for completion
-      this.currentStartObject = snapResult.object
-      this.currentStartLocalPos = localPos.clone()
-    } else {
-      // Create static measurement point
-      startPoint = this.createStaticPoint(point)
-      this.currentStartObject = null
-      this.currentStartLocalPos = null
-    }
+    const startPoint =
+      measurementOptions.isDynamic && snapResult.object
+        ? this.createMeasurementPoint(point, snapResult.object)
+        : this.createMeasurementPoint(point)
 
     this.currentMeasurement = {
       id,
@@ -740,30 +1170,32 @@ export class MeasurementTool extends THREE.EventDispatcher<MeasurementToolEvents
 
     const start = this.currentMeasurement.start!
     const point = snapResult.point
+    const options =
+      this.pendingMeasurementOptions ??
+      this.activeInteractionOptions ??
+      this.defaultOptions
 
     this.disableInteraction()
 
     // Clean up preview
     this.cleanupPreview()
 
-    // Create end measurement point based on dynamic mode
-    let endPoint: MeasurementPoint
-    if (this.dynamicMode && snapResult.object) {
-      // Calculate local position in the object's coordinate system
-      const localPos = snapResult.object.worldToLocal(point.clone())
-      endPoint = this.createDynamicPoint(snapResult.object, localPos)
-    } else {
-      // Create static measurement point
-      endPoint = this.createStaticPoint(point)
+    const resolvedOptions: MeasurementOptions = {
+      ...options,
+      targets: [...options.targets],
     }
 
+    const endPoint =
+      resolvedOptions.isDynamic && snapResult.object
+        ? this.createMeasurementPoint(point, snapResult.object)
+        : this.createMeasurementPoint(point)
+
     // Create actual measurement using the measurement points
-    this.addMeasurementFromPoints(start, endPoint)
+    this.addMeasurementFromPoints(start, endPoint, resolvedOptions)
 
     // Reset current measurement and object references
     this.currentMeasurement = null
-    this.currentStartObject = null
-    this.currentStartLocalPos = null
+    this.pendingMeasurementOptions = null
 
     // Re-create snap marker for next measurement
     this.createSnapMarker()
@@ -772,8 +1204,7 @@ export class MeasurementTool extends THREE.EventDispatcher<MeasurementToolEvents
   private cancelCurrentMeasurement(): void {
     this.cleanupPreview()
     this.currentMeasurement = null
-    this.currentStartObject = null
-    this.currentStartLocalPos = null
+    this.pendingMeasurementOptions = null
 
     // Re-create snap marker after canceling
     this.createSnapMarker()
@@ -805,8 +1236,17 @@ export class MeasurementTool extends THREE.EventDispatcher<MeasurementToolEvents
     mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1
     mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1
 
+    const options =
+      this.getActiveMeasurementOptions() ?? this.defaultOptions
+    const targets =
+      this.activeTargets.length > 0
+        ? this.activeTargets
+        : options.targets.length > 0
+        ? options.targets
+        : this.getAllMeshes()
+
     this.raycaster.setFromCamera(mouse, this.camera)
-    const intersects = this.raycaster.intersectObjects(this.targetObjects, true)
+    const intersects = this.raycaster.intersectObjects(targets, true)
 
     if (intersects.length === 0) return null
 
@@ -815,8 +1255,8 @@ export class MeasurementTool extends THREE.EventDispatcher<MeasurementToolEvents
     let snapped = false
     let snapMode = SnapMode.DISABLED
 
-    if (this.snapEnabled) {
-      const snapResult = this.performSnapping(intersection)
+    if (options.snapEnabled) {
+      const snapResult = this.performSnapping(intersection, options)
       snapPoint = snapResult.point
       snapped = snapResult.snapped
       snapMode = snapResult.snapMode
@@ -831,20 +1271,23 @@ export class MeasurementTool extends THREE.EventDispatcher<MeasurementToolEvents
     }
   }
 
-  private performSnapping(intersection: THREE.Intersection): SnapResult {
+  private performSnapping(
+    intersection: THREE.Intersection,
+    options: MeasurementOptions
+  ): SnapResult {
     const originalPoint = intersection.point
     let snapPoint = originalPoint.clone()
     let snapped = false
     let snapMode = SnapMode.DISABLED
 
-    if (this.snapMode === SnapMode.VERTEX) {
-      const vertexSnap = this.snapToVertex(intersection)
+    if (options.snapMode === SnapMode.VERTEX) {
+      const vertexSnap = this.snapToVertex(intersection, options.snapDistance)
       if (vertexSnap) {
         snapPoint = vertexSnap
         snapped = true
         snapMode = SnapMode.VERTEX
       }
-    } else if (this.snapMode === SnapMode.FACE) {
+    } else if (options.snapMode === SnapMode.FACE) {
       // Face snapping uses the intersection point (already on face)
       snapped = true
       snapMode = SnapMode.FACE
@@ -859,7 +1302,10 @@ export class MeasurementTool extends THREE.EventDispatcher<MeasurementToolEvents
     }
   }
 
-  private snapToVertex(intersection: THREE.Intersection): THREE.Vector3 | null {
+  private snapToVertex(
+    intersection: THREE.Intersection,
+    snapDistance: number
+  ): THREE.Vector3 | null {
     const geometry = (intersection.object as THREE.Mesh).geometry
     if (!geometry.attributes.position) return null
 
@@ -876,7 +1322,7 @@ export class MeasurementTool extends THREE.EventDispatcher<MeasurementToolEvents
       vertex.applyMatrix4(worldMatrix)
 
       const distance = vertex.distanceTo(intersection.point)
-      if (distance < this.snapDistance && distance < minDistance) {
+      if (distance < snapDistance && distance < minDistance) {
         minDistance = distance
         closestVertex.copy(vertex)
         found = true
@@ -886,16 +1332,19 @@ export class MeasurementTool extends THREE.EventDispatcher<MeasurementToolEvents
     return found ? closestVertex : null
   }
 
-  private createLabel(distance: number): CSS2DObject {
+  private createLabel(
+    distance: number,
+    options: MeasurementOptions
+  ): CSS2DObject {
     // Create HTML element for the label
     const labelDiv = document.createElement('div')
     labelDiv.className = 'measurement-label'
 
     // Set styles for the label
     Object.assign(labelDiv.style, {
-      color: this.labelColor,
-      fontSize: `${this.fontSize}px`,
-      fontFamily: this.fontFamily,
+      color: options.labelColor,
+      fontSize: `${options.fontSize}px`,
+      fontFamily: options.fontFamily,
       fontWeight: 'bold',
       background: 'rgba(0, 0, 0, 0.9)',
       padding: '8px 12px',
@@ -903,10 +1352,11 @@ export class MeasurementTool extends THREE.EventDispatcher<MeasurementToolEvents
       border: '2px solid rgba(255, 255, 255, 0.3)',
       whiteSpace: 'nowrap',
       userSelect: 'none',
-      pointerEvents: 'none',
+      pointerEvents: 'auto', // Enable pointer events for double-click
       boxShadow: '0 2px 8px rgba(0, 0, 0, 0.5)',
       textShadow: '1px 1px 2px rgba(0, 0, 0, 0.8)',
       zIndex: '1000',
+      cursor: 'pointer',
     })
 
     // Update the text content
@@ -914,6 +1364,16 @@ export class MeasurementTool extends THREE.EventDispatcher<MeasurementToolEvents
 
     // Create CSS2DObject
     const css2dObject = new CSS2DObject(labelDiv)
+
+    // Add double-click event listener to enter edit mode
+    labelDiv.addEventListener('dblclick', (event) => {
+      event.stopPropagation()
+      // Find the measurement that owns this label
+      const measurement = this.measurements.find((m) => m.label === css2dObject)
+      if (measurement) {
+        this.enterEditMode(measurement.id)
+      }
+    })
 
     return css2dObject
   }
@@ -954,5 +1414,245 @@ export class MeasurementTool extends THREE.EventDispatcher<MeasurementToolEvents
 
   private generateId(): string {
     return `measurement_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+  }
+
+  // Edit mode helper methods
+
+  private createEditSprites(): void {
+    if (!this.editingMeasurement || !this.editSpriteMaterial) return
+
+    const measurement = this.editingMeasurement
+
+    // Create start point sprite
+    this.startEditSprite = new THREE.Sprite(this.editSpriteMaterial.clone())
+    this.startEditSprite.position.copy(measurement.start.position)
+    this.startEditSprite.scale.set(this.markerSize, this.markerSize, 1)
+    this.startEditSprite.userData.editPoint = 'start'
+    this.scene.add(this.startEditSprite)
+
+    // Create end point sprite
+    this.endEditSprite = new THREE.Sprite(this.editSpriteMaterial.clone())
+    this.endEditSprite.position.copy(measurement.end.position)
+    this.endEditSprite.scale.set(this.markerSize, this.markerSize, 1)
+    this.endEditSprite.userData.editPoint = 'end'
+    this.scene.add(this.endEditSprite)
+  }
+
+  private removeEditSprites(): void {
+    if (this.startEditSprite) {
+      this.scene.remove(this.startEditSprite)
+      if (this.startEditSprite.material instanceof THREE.Material) {
+        this.startEditSprite.material.dispose()
+      }
+      this.startEditSprite = null
+    }
+
+    if (this.endEditSprite) {
+      this.scene.remove(this.endEditSprite)
+      if (this.endEditSprite.material instanceof THREE.Material) {
+        this.endEditSprite.material.dispose()
+      }
+      this.endEditSprite = null
+    }
+  }
+
+  private onEditMouseDown = (event: MouseEvent): void => {
+    if (!this.isEditMode || !this.domElement) return
+    const mouse = new THREE.Vector2()
+    const rect = this.domElement.getBoundingClientRect()
+
+    mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1
+    mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1
+
+    this.raycaster.setFromCamera(mouse, this.camera)
+
+    // Check if clicking on edit sprites
+    const sprites = [this.startEditSprite, this.endEditSprite].filter(
+      (s) => s !== null
+    ) as THREE.Sprite[]
+    const spriteIntersects = this.raycaster.intersectObjects(sprites)
+
+    if (spriteIntersects.length > 0) {
+      const sprite = spriteIntersects[0].object
+      this.editingPoint = sprite.userData.editPoint as 'start' | 'end'
+      this.isDragging = true
+
+      // Disable camera controls during dragging
+      this.disableControls()
+
+      // Hide the edit sprite being dragged and show crosshair marker
+      if (this.editingPoint === 'start' && this.startEditSprite) {
+        this.startEditSprite.visible = false
+      } else if (this.editingPoint === 'end' && this.endEditSprite) {
+        this.endEditSprite.visible = false
+      }
+
+      // Show snap marker
+      this.createSnapMarker()
+      if (this.snapMarker) {
+        this.snapMarker.position.copy(sprite.position)
+        this.snapMarker.visible = true
+      }
+
+      // Hide cursor
+      this.hideCursor()
+    }
+  }
+
+  private onEditMouseMove = (event: MouseEvent): void => {
+    if (!this.isEditMode || !this.isDragging || !this.editingMeasurement) return
+
+    const snapResult = this.getSnapResult(event)
+    if (!snapResult) return
+
+    // Update snap marker position
+    if (this.snapMarker) {
+      this.snapMarker.position.copy(snapResult.point)
+      this.snapMarker.visible = this.markerVisible
+    }
+
+    // Update the measurement preview
+    if (this.editingPoint === 'start') {
+      this.updateMeasurementPreview(
+        snapResult.point,
+        this.editingMeasurement.end.position
+      )
+    } else if (this.editingPoint === 'end') {
+      this.updateMeasurementPreview(
+        this.editingMeasurement.start.position,
+        snapResult.point
+      )
+    }
+  }
+
+  private onEditMouseUp = (event: MouseEvent): void => {
+    if (
+      !this.isEditMode ||
+      !this.isDragging ||
+      !this.editingMeasurement ||
+      !this.editingPoint
+    )
+      return
+
+    const snapResult = this.getSnapResult(event)
+    if (!snapResult) {
+      this.cancelEdit()
+      return
+    }
+
+    // Update the measurement point
+    const point =
+      this.editingPoint === 'start'
+        ? this.editingMeasurement.start
+        : this.editingMeasurement.end
+
+    // Update position
+    point.position.copy(snapResult.point)
+
+    // Update dynamic point data if applicable
+    const measurementOptions = this.editingMeasurement.options
+    if (measurementOptions.isDynamic && snapResult.object) {
+      const localPos = snapResult.object.worldToLocal(snapResult.point.clone())
+      point.anchor = {
+        object: snapResult.object,
+        localPosition: localPos,
+      }
+    } else {
+      // Make it static
+      point.anchor = undefined
+    }
+
+    // Recalculate distance and update geometry
+    const newDistance = this.editingMeasurement.start.position.distanceTo(
+      this.editingMeasurement.end.position
+    )
+    this.editingMeasurement.distance = newDistance
+
+    // Update line geometry
+    const positions = [
+      this.editingMeasurement.start.position,
+      this.editingMeasurement.end.position,
+    ]
+    this.editingMeasurement.line.geometry.setFromPoints(positions)
+    this.editingMeasurement.line.geometry.attributes.position.needsUpdate = true
+
+    // Update label position and text
+    const midpoint = this.editingMeasurement.start.position
+      .clone()
+      .add(this.editingMeasurement.end.position)
+      .multiplyScalar(0.5)
+    this.editingMeasurement.label.position.copy(midpoint)
+    this.updateLabelText(this.editingMeasurement.label.element, newDistance)
+
+    // Update edit sprite positions
+    if (this.startEditSprite) {
+      this.startEditSprite.position.copy(this.editingMeasurement.start.position)
+      this.startEditSprite.visible = true
+    }
+    if (this.endEditSprite) {
+      this.endEditSprite.position.copy(this.editingMeasurement.end.position)
+      this.endEditSprite.visible = true
+    }
+
+    // Remove snap marker
+    this.removeSnapMarker()
+
+    // Show cursor
+    this.showCursor()
+
+    // Re-enable camera controls
+    this.enableControls()
+
+    // Dispatch update event
+    this.dispatchEvent({
+      type: 'measurementUpdated',
+      measurement: this.editingMeasurement,
+    })
+
+    // Reset dragging state
+    this.isDragging = false
+    this.editingPoint = null
+  }
+
+  private cancelEdit(): void {
+    // Reset dragging state
+    this.isDragging = false
+    this.editingPoint = null
+
+    // Re-enable camera controls
+    this.enableControls()
+
+    // Show edit sprites
+    if (this.startEditSprite) {
+      this.startEditSprite.visible = true
+    }
+    if (this.endEditSprite) {
+      this.endEditSprite.visible = true
+    }
+
+    // Remove snap marker
+    this.removeSnapMarker()
+
+    // Show cursor
+    this.showCursor()
+  }
+
+  private updateMeasurementPreview(
+    startPos: THREE.Vector3,
+    endPos: THREE.Vector3
+  ): void {
+    if (!this.editingMeasurement) return
+
+    const distance = startPos.distanceTo(endPos)
+
+    // Update line geometry
+    const positions = [startPos, endPos]
+    this.editingMeasurement.line.geometry.setFromPoints(positions)
+    this.editingMeasurement.line.geometry.attributes.position.needsUpdate = true
+
+    // Update label position and text
+    const midpoint = startPos.clone().add(endPos).multiplyScalar(0.5)
+    this.editingMeasurement.label.position.copy(midpoint)
+    this.updateLabelText(this.editingMeasurement.label.element, distance)
   }
 }
