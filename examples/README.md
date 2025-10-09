@@ -62,6 +62,18 @@ This folder contains interactive examples demonstrating the functionality of the
   - Interactive labels
 - **Usage:** Select a tool and click in the 3D scene to measure
 
+### 📦 Asset Loader Package Example
+
+- **Location:** `/asset-loader/`
+- **Features:**
+  - Universal loader for GLTF, FBX, and OBJ formats
+  - Visual placeholder with shader fill effect
+  - Real-time progress tracking
+  - Asset caching for performance
+  - Optional low-res model loading
+  - Event-driven architecture
+- **Usage:** Use the control panel to create placeholders and see the loading system in action
+
 ## 🛠 Development
 
 ### Shared Utilities

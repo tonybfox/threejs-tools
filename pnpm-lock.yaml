@@ -49,6 +49,12 @@ importers:
         specifier: ^5.4.0
         version: 5.4.20
 
+  packages/asset-loader:
+    dependencies:
+      three:
+        specifier: '>=0.150.0'
+        version: 0.180.0
+
   packages/camera:
     dependencies:
       three:
