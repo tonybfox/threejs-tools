@@ -14,6 +14,9 @@ export default defineConfig({
         '../packages/asset-loader/src/index.ts'
       ),
       '@tonybfox/threejs-terrain': resolve('../packages/terrain/src/index.ts'),
+      '@tonybfox/threejs-sunlight': resolve(
+        '../packages/sunlight/src/index.ts'
+      ),
     },
   },
   build: {
@@ -26,6 +29,7 @@ export default defineConfig({
         measurements: './measurements/index.html',
         assetLoader: './asset-loader/index.html',
         terrain: './terrain/index.html',
+        sunlight: './sunlight/index.html',
       },
     },
   },

@@ -74,6 +74,18 @@ This folder contains interactive examples demonstrating the functionality of the
   - Event-driven architecture
 - **Usage:** Use the control panel to create placeholders and see the loading system in action
 
+### ☀️ Sun Light Package Example
+
+- **Location:** `/sunlight/`
+- **Features:**
+  - Real-time sun position derived from latitude, longitude, and date
+  - Weather presets that influence color, intensity, and ambient fill
+  - Automatic sunrise/sunset color transitions based on solar altitude
+  - Optional system clock sync for live daylight simulation
+  - Control panel for day-of-year, time-of-day, and timezone offsets
+  - Directional light helper and scene objects to showcase dynamic shadows
+- **Usage:** Adjust the control panel to explore different lighting scenarios or enable real-time mode
+
 ## 🛠 Development
 
 ### Shared Utilities

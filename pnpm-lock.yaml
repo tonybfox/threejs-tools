@@ -41,6 +41,9 @@ importers:
       '@tonybfox/threejs-measurements':
         specifier: workspace:*
         version: link:../packages/measurements
+      '@tonybfox/threejs-sunlight':
+        specifier: workspace:*
+        version: link:../packages/sunlight
       '@tonybfox/threejs-terrain':
         specifier: workspace:*
         version: link:../packages/terrain
@@ -81,6 +84,9 @@ importers:
       '@tonybfox/threejs-measurements':
         specifier: workspace:*
         version: link:../measurements
+      '@tonybfox/threejs-sunlight':
+        specifier: workspace:*
+        version: link:../sunlight
       '@tonybfox/threejs-terrain':
         specifier: workspace:*
         version: link:../terrain
@@ -95,6 +101,12 @@ importers:
         version: 0.180.0
 
   packages/measurements:
+    dependencies:
+      three:
+        specifier: '>=0.150.0'
+        version: 0.180.0
+
+  packages/sunlight:
     dependencies:
       three:
         specifier: '>=0.150.0'
