@@ -1,0 +1,23 @@
+{
+  "name": "@tonybfox/threejs-compass",
+  "version": "0.0.1",
+  "main": "dist/index.js",
+  "module": "dist/index.mjs",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsup src/index.ts --format esm,cjs --dts",
+    "clean": "rm -rf dist"
+  },
+  "peerDependencies": {
+    "three": ">=0.150.0"
+  },
+  "description": "Configurable compass arrow helper for Three.js scenes with geographic metadata and heading events.",
+  "keywords": [
+    "threejs",
+    "compass",
+    "heading",
+    "navigation",
+    "gizmo",
+    "north"
+  ]
+}

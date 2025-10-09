@@ -17,6 +17,7 @@ export default defineConfig({
       '@tonybfox/threejs-sunlight': resolve(
         '../packages/sunlight/src/index.ts'
       ),
+      '@tonybfox/threejs-compass': resolve('../packages/compass/src/index.ts'),
     },
   },
   build: {
@@ -30,6 +31,7 @@ export default defineConfig({
         assetLoader: './asset-loader/index.html',
         terrain: './terrain/index.html',
         sunlight: './sunlight/index.html',
+        compass: './compass/index.html',
       },
     },
   },

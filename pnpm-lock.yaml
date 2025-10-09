@@ -35,6 +35,9 @@ importers:
       '@tonybfox/threejs-camera':
         specifier: workspace:*
         version: link:../packages/camera
+      '@tonybfox/threejs-compass':
+        specifier: workspace:*
+        version: link:../packages/compass
       '@tonybfox/threejs-grid':
         specifier: workspace:*
         version: link:../packages/grid
@@ -65,6 +68,12 @@ importers:
         version: 0.180.0
 
   packages/camera:
+    dependencies:
+      three:
+        specifier: '>=0.150.0'
+        version: 0.180.0
+
+  packages/compass:
     dependencies:
       three:
         specifier: '>=0.150.0'

@@ -86,6 +86,16 @@ This folder contains interactive examples demonstrating the functionality of the
   - Directional light helper and scene objects to showcase dynamic shadows
 - **Usage:** Adjust the control panel to explore different lighting scenarios or enable real-time mode
 
+### 🧭 Compass Package Example
+
+- **Location:** `/compass/`
+- **Features:**
+  - Stylised compass gizmo that reports heading, latitude, and longitude
+  - Declination slider with live heading updates
+  - Location presets plus manual coordinate entry
+  - Optional dynamic north resolver demonstrating custom heading logic
+- **Usage:** Move the compass or adjust coordinates to see the arrow rotate and metadata update in real time
+
 ## 🛠 Development
 
 ### Shared Utilities
