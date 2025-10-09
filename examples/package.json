@@ -13,7 +13,9 @@
     "three": "^0.180.0",
     "@tonybfox/threejs-camera": "workspace:*",
     "@tonybfox/threejs-grid": "workspace:*",
-    "@tonybfox/threejs-measurements": "workspace:*"
+    "@tonybfox/threejs-measurements": "workspace:*",
+    "@tonybfox/threejs-terrain": "workspace:*",
+    "@tonybfox/threejs-asset-loader": "workspace:*"
   },
   "devDependencies": {
     "@types/three": "^0.180.0",

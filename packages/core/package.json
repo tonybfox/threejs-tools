@@ -22,7 +22,8 @@
     "@tonybfox/threejs-camera": "workspace:*",
     "@tonybfox/threejs-grid": "workspace:*",
     "@tonybfox/threejs-measurements": "workspace:*",
-    "@tonybfox/threejs-terrain": "workspace:*"
+    "@tonybfox/threejs-terrain": "workspace:*",
+    "@tonybfox/threejs-asset-loader": "workspace:*"
   },
   "keywords": [
     "threejs",
