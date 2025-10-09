@@ -26,7 +26,12 @@ scene.add(refSphere)
 // Create asset loaders for demonstration
 const assetLoader = new AssetLoader()
 let currentPlaceholder = null
-let currentAsset = null
+let previewAsset = null
+const loadedAssets = new Set()
+let latestAsset = null
+const pendingAssetUpdates = []
+
+const getPendingPlacement = () => pendingAssetUpdates[0] || null
 
 // Progress tracking
 let progressInfo = {
@@ -42,6 +47,10 @@ assetLoader.addEventListener('placeholderCreated', (event) => {
     scene.remove(currentPlaceholder)
   }
   currentPlaceholder = event.placeholder
+  const pending = getPendingPlacement()
+  if (pending) {
+    placeAtBottomCenter(currentPlaceholder, pending.position)
+  }
   scene.add(currentPlaceholder)
 })
 
@@ -53,27 +62,45 @@ assetLoader.addEventListener('progress', (event) => {
 
 assetLoader.addEventListener('lowResLoaded', (event) => {
   console.log('Low-res model loaded')
-  if (currentAsset) {
-    scene.remove(currentAsset)
+  if (previewAsset) {
+    scene.remove(previewAsset)
   }
-  currentAsset = event.lowRes
-  scene.add(currentAsset)
+  previewAsset = event.lowRes
+  const pending = getPendingPlacement()
+  if (pending) {
+    placeAtBottomCenter(previewAsset, pending.position)
+  }
+  scene.add(previewAsset)
+  latestAsset = previewAsset
 })
 
 assetLoader.addEventListener('loaded', (event) => {
   console.log('Asset loaded successfully')
-  if (currentAsset) {
-    scene.remove(currentAsset)
+  if (previewAsset && previewAsset !== event.asset) {
+    scene.remove(previewAsset)
+    previewAsset = null
   }
-  currentAsset = event.asset
-  scene.add(currentAsset)
+  const asset = event.asset
+  loadedAssets.add(asset)
+  const pending = pendingAssetUpdates.shift()
+  if (pending) {
+    placeAtBottomCenter(asset, pending.position)
+  }
+  scene.add(asset)
+  latestAsset = asset
 
   // Remove placeholder after loading
   if (currentPlaceholder) {
     scene.remove(currentPlaceholder)
     currentPlaceholder = null
   }
-  updateStatusUI('Asset loaded successfully!')
+
+  if (pending && pending.onLoad) {
+    pending.onLoad(asset)
+  } else {
+    updateStatusUI('Asset loaded successfully!')
+  }
+  updateCacheInfo()
 })
 
 assetLoader.addEventListener('error', (event) => {
@@ -135,6 +162,34 @@ function updateStatusUI(message) {
   statusDiv.textContent = message
 }
 
+function placeAtBottomCenter(object, position) {
+  const offsetData = object.userData.bottomCenterOffset
+  if (offsetData) {
+    const offset =
+      offsetData instanceof THREE.Vector3
+        ? offsetData
+        : new THREE.Vector3(
+            offsetData.x ?? 0,
+            offsetData.y ?? 0,
+            offsetData.z ?? 0
+          )
+
+    if (!(offsetData instanceof THREE.Vector3)) {
+      object.userData.bottomCenterOffset = offset
+    }
+
+    object.position.set(
+      position.x - offset.x,
+      position.y - offset.y,
+      position.z - offset.z
+    )
+  } else {
+    object.position.copy(position)
+  }
+
+  object.updateMatrixWorld(true)
+}
+
 // Placeholder demo section
 const placeholderSection = document.createElement('div')
 placeholderSection.style.cssText =
@@ -175,7 +230,7 @@ const createPlaceholderBtn = UIHelpers.createButton(
     const placeholder = assetLoader['createPlaceholder'](
       [currentPlaceholderSize, currentPlaceholderSize, currentPlaceholderSize],
       0x4fc3f7,
-      0.3
+      1
     )
     currentPlaceholder = placeholder
     scene.add(currentPlaceholder)
@@ -256,6 +311,45 @@ urlInfo.innerHTML = `
 `
 modelSection.appendChild(urlInfo)
 
+const loadRandomBtn = UIHelpers.createButton(
+  'Load GLTF at Random Position',
+  async () => {
+    const randomX = (Math.random() - 0.5) * 20
+    const randomZ = (Math.random() - 0.5) * 20
+    updateStatusUI('Loading GLTF asset...')
+
+    const placementHandler = (asset) => {
+      latestAsset = asset
+      updateStatusUI(
+        `Asset loaded at X: ${randomX.toFixed(1)}, Z: ${randomZ.toFixed(1)}`
+      )
+    }
+    const pendingPlacement = {
+      position: new THREE.Vector3(randomX, 0, randomZ),
+      onLoad: placementHandler,
+    }
+    pendingAssetUpdates.push(pendingPlacement)
+
+    try {
+      await assetLoader.load({
+        type: 'gltf',
+        url: 'https://visualconfig-dev.s3.eu-west-2.amazonaws.com/uploads/123e4567-e89b-12d3-a456-426614174003/a682a3c5-98bf-43b2-8993-a100f9d89c63.gltf?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Content-Sha256=UNSIGNED-PAYLOAD&X-Amz-Credential=AKIAUS2U3PEFAUHF2QNI%2F20251008%2Feu-west-2%2Fs3%2Faws4_request&X-Amz-Date=20251008T231453Z&X-Amz-Expires=3600&X-Amz-Signature=7e06d67998ccf950538168d742a90cff1e02f4ce931d7884e90be88dbd3a4ea8&X-Amz-SignedHeaders=host&x-amz-checksum-mode=ENABLED&x-id=GetObject',
+        size: [10, 3, 10],
+        enableCaching: true,
+      })
+    } catch (error) {
+      const index = pendingAssetUpdates.indexOf(pendingPlacement)
+      if (index >= 0) {
+        pendingAssetUpdates.splice(index, 1)
+      }
+      console.error('Error loading asset:', error)
+      updateStatusUI(`Error: ${error.message}`)
+    }
+  },
+  'primary'
+)
+modelSection.appendChild(loadRandomBtn)
+
 controlPanel.appendChild(modelSection)
 
 // Cache controls
@@ -299,10 +393,16 @@ const clearSceneBtn = UIHelpers.createButton(
       scene.remove(currentPlaceholder)
       currentPlaceholder = null
     }
-    if (currentAsset) {
-      scene.remove(currentAsset)
-      currentAsset = null
+    if (previewAsset) {
+      scene.remove(previewAsset)
+      previewAsset = null
     }
+    loadedAssets.forEach((asset) => {
+      scene.remove(asset)
+    })
+    loadedAssets.clear()
+    latestAsset = null
+    pendingAssetUpdates.length = 0
     if (fillAnimation) {
       cancelAnimationFrame(fillAnimation)
       fillAnimation = null
@@ -325,13 +425,13 @@ function customAnimation() {
   refSphere.position.y = 0.5 + Math.sin(Date.now() * 0.001) * 0.3
 
   // Rotate loaded asset if present
-  if (currentAsset) {
-    currentAsset.rotation.y += 0.005
+  if (latestAsset) {
+    // latestAsset.rotation.y += 0.005
   }
 
   // Rotate placeholder if present
   if (currentPlaceholder) {
-    currentPlaceholder.rotation.y += 0.01
+    // currentPlaceholder.rotation.y += 0.01
   }
 }
 
@@ -349,7 +449,7 @@ console.log('')
 console.log('Usage:')
 console.log('1. Create a placeholder to see the loading indicator')
 console.log('2. Animate the fill effect to simulate loading progress')
-console.log('3. Use the AssetLoader class in your code to load actual models')
+console.log('3. Use the "Load GLTF at Random Position" button to spawn assets')
 console.log('')
 console.log('Example code:')
 console.log(`
