@@ -1,7 +1,9 @@
 import * as THREE from 'three'
+import { CompassOverlay } from '@tonybfox/threejs-compass'
 import { SunLightTool } from '@tonybfox/threejs-sunlight'
 import { SceneSetup, ObjectFactory, UIHelpers } from '../shared/utils.js'
 
+let compass
 const radToDeg = (radians) => (radians * 180) / Math.PI
 
 const clamp = (value, min, max) => Math.min(Math.max(value, min), max)
@@ -53,10 +55,27 @@ const sceneSetup = new SceneSetup({
   antialias: true,
 })
 
+const { scene, camera } = sceneSetup
+
+// Create compass overlay
+compass = new CompassOverlay(camera, {
+  size: 100,
+  position: 'bottom-right',
+  offset: { x: 20, y: 20 },
+  colors: {
+    background: '#1a1a1a',
+    border: '#444444',
+    arrow: '#ff4444',
+    text: '#ffffff',
+    ticks: '#666666',
+  },
+})
+
+// Start the compass
+compass.start()
+
 const ground = sceneSetup.addGround(220, 0x1c242f)
 ground.material.color.setHex(0x1c242f)
-
-const { scene } = sceneSetup
 
 const ambientLight = scene.children.find(
   (child) => child instanceof THREE.AmbientLight
@@ -142,7 +161,7 @@ const locationPresets = {
     label: 'London, UK',
     latitude: 51.5072,
     longitude: -0.1276,
-    utcOffsetMinutes: 0,
+    utcOffsetMinutes: 60, // BST (British Summer Time) UTC+1. Change to 0 for GMT (winter).
   },
   dubai: {
     label: 'Dubai, UAE',

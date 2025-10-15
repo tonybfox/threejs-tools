@@ -62,7 +62,7 @@ const clamp = (value: number, min: number, max: number): number =>
   Math.min(Math.max(value, min), max)
 
 const normalizeLongitude = (value: number): number => {
-  const normalized = ((value + 180) % 360 + 360) % 360 - 180
+  const normalized = ((((value + 180) % 360) + 360) % 360) - 180
   return normalized
 }
 
@@ -107,10 +107,7 @@ const declination = (longitude: number): number => {
 
 const rightAscension = (longitude: number): number => {
   const e = DEG2RAD * 23.4397
-  return Math.atan2(
-    Math.sin(longitude) * Math.cos(e),
-    Math.cos(longitude)
-  )
+  return Math.atan2(Math.sin(longitude) * Math.cos(e), Math.cos(longitude))
 }
 
 const siderealTime = (days: number, longitudeWest: number): number =>
@@ -224,8 +221,7 @@ export class SunLightTool extends THREE.EventDispatcher<SunLightToolEvents> {
     const defaultLongitude = options.longitude ?? -0.1276
     this.latitude = clamp(defaultLatitude, -90, 90)
     this.longitude = normalizeLongitude(defaultLongitude)
-    this.referenceYear =
-      options.referenceYear ?? new Date().getUTCFullYear()
+    this.referenceYear = options.referenceYear ?? new Date().getUTCFullYear()
     this.dayOfYear = limitDayOfYear(
       options.dayOfYear ?? 172,
       this.referenceYear
@@ -468,12 +464,17 @@ export class SunLightTool extends THREE.EventDispatcher<SunLightToolEvents> {
     const dayIndex = clamp(this.dayOfYear, 1, daysInYear)
     const date = new Date(Date.UTC(this.referenceYear, 0, 1, 0, 0, 0, 0))
     const minutesFromYearStart =
-      (dayIndex - 1) * 24 * 60 + this.timeOfDay * 60 - this.timeZoneOffsetMinutes
+      (dayIndex - 1) * 24 * 60 +
+      this.timeOfDay * 60 -
+      this.timeZoneOffsetMinutes
     date.setUTCMinutes(minutesFromYearStart)
     return date
   }
 
-  private computeSunPosition(date: Date): { azimuth: number; altitude: number } {
+  private computeSunPosition(date: Date): {
+    azimuth: number
+    altitude: number
+  } {
     const days = toDays(date)
     const lw = -this.longitude * DEG2RAD
     const phi = this.latitude * DEG2RAD
@@ -495,9 +496,17 @@ export class SunLightTool extends THREE.EventDispatcher<SunLightToolEvents> {
   ): void {
     const radius = this.lightDistance
     const altitude = position.altitude
-    const azimuth = position.azimuth + Math.PI // convert from south-origin to north-origin
+    // Astronomical azimuth: 0° = South, increasing clockwise (East=90°, North=180°, West=270°)
+    // Three.js coordinates: +X = East, +Z = North, -X = West, -Z = South
+    // The solarAzimuth function returns azimuth measured from South, clockwise
+    const azimuth = position.azimuth
 
-    const x = radius * Math.cos(altitude) * Math.sin(azimuth)
+    // Correct coordinate mapping for Three.js
+    // sin(azimuth) gives us the East-West component, but we need to negate it:
+    // azimuth 90° (East) should give +X, azimuth 270° (West) should give -X
+    // cos(azimuth) gives us the North-South component, also needs to be positive for correct clockwise motion:
+    // azimuth 0° (South) should give -Z, azimuth 180° (North) should give +Z
+    const x = -radius * Math.cos(altitude) * Math.sin(azimuth)
     const y = radius * Math.sin(altitude)
     const z = radius * Math.cos(altitude) * Math.cos(azimuth)
 
