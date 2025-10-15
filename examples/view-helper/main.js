@@ -50,7 +50,7 @@ function init() {
   clock = new THREE.Clock()
 
   // Create performance monitor
-  performanceMonitor = new PerformanceMonitor(scene, renderer)
+  // performanceMonitor = new PerformanceMonitor(scene, renderer)
 
   // Create view helper
   viewHelper = new ViewHelper(camera, renderer.domElement, {
@@ -58,17 +58,6 @@ function init() {
     position: 'bottom-right',
     offset: { x: 20, y: 20 },
     center: new THREE.Vector3(0, 0, 0),
-    labels: {
-      x: '',
-      y: '',
-      z: '',
-    },
-    colors: {
-      x: '#ff4466',
-      y: '#88ff44',
-      z: '#4488ff',
-      background: '#000000',
-    },
   })
 
   // Add event listeners for view helper
@@ -295,7 +284,7 @@ function animate() {
   }
 
   // Update performance monitor
-  performanceMonitor.update()
+  //performanceMonitor.update()
 
   // Render main scene
   renderer.render(scene, camera)

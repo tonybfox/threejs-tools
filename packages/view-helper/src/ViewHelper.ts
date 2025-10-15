@@ -1,5 +1,12 @@
 import * as THREE from 'three'
 
+// Hard-coded axis colors matching TransformControls
+const AXIS_COLORS = {
+  x: '#ed4358',
+  y: '#82cc19',
+  z: '#3185eb',
+} as const
+
 export interface ViewHelperOptions {
   container?: HTMLElement
   size?: number
@@ -10,12 +17,6 @@ export interface ViewHelperOptions {
     x?: string
     y?: string
     z?: string
-  }
-  colors?: {
-    x: string
-    y: string
-    z: string
-    background: string
   }
 }
 
@@ -86,17 +87,10 @@ export class ViewHelper extends THREE.EventDispatcher<ViewHelperEventMap> {
       offset: options.offset || { x: 20, y: 20 },
       center: options.center || new THREE.Vector3(),
       labels: {
-        x: options.labels?.x || 'X',
-        y: options.labels?.y || 'Y',
-        z: options.labels?.z || 'Z',
+        x: options.labels?.x || '',
+        y: options.labels?.y || '',
+        z: options.labels?.z || '',
         ...options.labels,
-      },
-      colors: {
-        x: options.colors?.x || '#ff4466',
-        y: options.colors?.y || '#88ff44',
-        z: options.colors?.z || '#4488ff',
-        background: options.colors?.background || '#000000',
-        ...options.colors,
       },
     }
 
@@ -118,15 +112,15 @@ export class ViewHelper extends THREE.EventDispatcher<ViewHelperEventMap> {
       .translate(0.4, 0, 0)
 
     const xAxisMaterial = new THREE.MeshBasicMaterial({
-      color: this.options.colors.x,
+      color: AXIS_COLORS.x,
       toneMapped: false,
     })
     const yAxisMaterial = new THREE.MeshBasicMaterial({
-      color: this.options.colors.y,
+      color: AXIS_COLORS.y,
       toneMapped: false,
     })
     const zAxisMaterial = new THREE.MeshBasicMaterial({
-      color: this.options.colors.z,
+      color: AXIS_COLORS.z,
       toneMapped: false,
     })
 
@@ -145,21 +139,13 @@ export class ViewHelper extends THREE.EventDispatcher<ViewHelperEventMap> {
   }
 
   private createSprites(): void {
-    const posXSprite = this.createSprite(
-      this.options.colors.x,
-      this.options.labels.x
-    )
-    const posYSprite = this.createSprite(
-      this.options.colors.y,
-      this.options.labels.y
-    )
-    const posZSprite = this.createSprite(
-      this.options.colors.z,
-      this.options.labels.z
-    )
-    const negXSprite = this.createSprite(this.options.colors.background)
-    const negYSprite = this.createSprite(this.options.colors.background)
-    const negZSprite = this.createSprite(this.options.colors.background)
+    const posXSprite = this.createSprite(AXIS_COLORS.x, this.options.labels.x)
+    const posYSprite = this.createSprite(AXIS_COLORS.y, this.options.labels.y)
+    const posZSprite = this.createSprite(AXIS_COLORS.z, this.options.labels.z)
+    // Use faded versions of the axis colors for negative axes
+    const negXSprite = this.createSprite(AXIS_COLORS.x)
+    const negYSprite = this.createSprite(AXIS_COLORS.y)
+    const negZSprite = this.createSprite(AXIS_COLORS.z)
 
     this.sprites = {
       posX: posXSprite,
@@ -472,18 +458,9 @@ export class ViewHelper extends THREE.EventDispatcher<ViewHelperEventMap> {
     this.sprites.posZ.material.dispose()
 
     // Create new sprites with updated labels
-    const newPosX = this.createSprite(
-      this.options.colors.x,
-      this.options.labels.x
-    )
-    const newPosY = this.createSprite(
-      this.options.colors.y,
-      this.options.labels.y
-    )
-    const newPosZ = this.createSprite(
-      this.options.colors.z,
-      this.options.labels.z
-    )
+    const newPosX = this.createSprite(AXIS_COLORS.x, this.options.labels.x)
+    const newPosY = this.createSprite(AXIS_COLORS.y, this.options.labels.y)
+    const newPosZ = this.createSprite(AXIS_COLORS.z, this.options.labels.z)
 
     // Update sprites
     this.sprites.posX.material = newPosX.material
