@@ -106,6 +106,9 @@ assetLoader.addEventListener('loaded', (event) => {
 assetLoader.addEventListener('error', (event) => {
   console.error('Error loading asset:', event.error)
   updateStatusUI(`Error: ${event.error.message}`)
+
+  // Keep the placeholder visible in error state - don't remove it
+  // The placeholder should now be showing the error visual feedback
 })
 
 // Create UI controls
@@ -350,6 +353,45 @@ const loadRandomBtn = UIHelpers.createButton(
 )
 modelSection.appendChild(loadRandomBtn)
 
+// Test error state button
+const testErrorBtn = UIHelpers.createButton(
+  'Test Error State',
+  async () => {
+    const randomX = (Math.random() - 0.5) * 20
+    const randomZ = (Math.random() - 0.5) * 20
+    updateStatusUI('Testing error state...')
+
+    const placementHandler = (asset) => {
+      // This won't be called on error
+    }
+    const pendingPlacement = {
+      position: new THREE.Vector3(randomX, 0, randomZ),
+      onLoad: placementHandler,
+    }
+    pendingAssetUpdates.push(pendingPlacement)
+
+    try {
+      await assetLoader.load({
+        type: 'gltf',
+        url: 'https://invalid-url-that-does-not-exist.com/nonexistent.gltf',
+        size: [3, 3, 3],
+        enableCaching: false,
+        errorColor: 0xff4444, // Red color for error
+        errorOpacity: 0.6,
+      })
+    } catch (error) {
+      const index = pendingAssetUpdates.indexOf(pendingPlacement)
+      if (index >= 0) {
+        pendingAssetUpdates.splice(index, 1)
+      }
+      console.log('Error state demonstration - this is expected!')
+      updateStatusUI(`Error state demonstrated: ${error.message}`)
+    }
+  },
+  'danger'
+)
+modelSection.appendChild(testErrorBtn)
+
 controlPanel.appendChild(modelSection)
 
 // Cache controls
@@ -417,7 +459,7 @@ const clearSceneBtn = UIHelpers.createButton(
 controlPanel.appendChild(clearSceneBtn)
 
 // Custom animation function
-function customAnimation() {
+function customAnimation(deltaTime) {
   // Rotate reference objects
   refCube.rotation.x += 0.01
   refCube.rotation.y += 0.01
@@ -433,6 +475,9 @@ function customAnimation() {
   if (currentPlaceholder) {
     // currentPlaceholder.rotation.y += 0.01
   }
+
+  // Update placeholder animation (for error state pulsing effect)
+  assetLoader.updatePlaceholderAnimation(deltaTime || 0.016)
 }
 
 // Start animation using shared scene setup

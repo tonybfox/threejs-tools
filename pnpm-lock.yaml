@@ -50,6 +50,9 @@ importers:
       '@tonybfox/threejs-terrain':
         specifier: workspace:*
         version: link:../packages/terrain
+      '@tonybfox/threejs-view-helper':
+        specifier: workspace:*
+        version: link:../packages/view-helper
       three:
         specifier: ^0.180.0
         version: 0.180.0
@@ -102,6 +105,9 @@ importers:
       '@tonybfox/threejs-terrain':
         specifier: workspace:*
         version: link:../terrain
+      '@tonybfox/threejs-view-helper':
+        specifier: workspace:*
+        version: link:../view-helper
       three:
         specifier: '>=0.150.0'
         version: 0.180.0
@@ -125,6 +131,12 @@ importers:
         version: 0.180.0
 
   packages/terrain:
+    dependencies:
+      three:
+        specifier: '>=0.150.0'
+        version: 0.180.0
+
+  packages/view-helper:
     dependencies:
       three:
         specifier: '>=0.150.0'

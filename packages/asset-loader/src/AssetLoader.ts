@@ -22,6 +22,8 @@ export interface AssetLoaderOptions {
   enableCaching?: boolean
   placeholderColor?: number
   placeholderOpacity?: number
+  errorColor?: number // Color to use when loading fails
+  errorOpacity?: number // Opacity to use when loading fails
 }
 
 export class AssetLoader extends THREE.EventDispatcher<AssetLoaderEventMap> {
@@ -32,6 +34,8 @@ export class AssetLoader extends THREE.EventDispatcher<AssetLoaderEventMap> {
   private placeholder: THREE.Object3D | null = null
   private loadedAsset: THREE.Object3D | null = null
   private lowResAsset: THREE.Object3D | null = null
+  private errorColor: number = 0xff4444
+  private errorOpacity: number = 0.5
 
   constructor() {
     super()
@@ -61,6 +65,8 @@ export class AssetLoader extends THREE.EventDispatcher<AssetLoaderEventMap> {
         color: { value: new THREE.Color(color) },
         opacity: { value: opacity },
         fillProgress: { value: 0.0 },
+        time: { value: 0.0 },
+        isError: { value: 0.0 },
       },
       vertexShader: `
         varying vec3 vPosition;
@@ -73,6 +79,8 @@ export class AssetLoader extends THREE.EventDispatcher<AssetLoaderEventMap> {
         uniform vec3 color;
         uniform float opacity;
         uniform float fillProgress;
+        uniform float time;
+        uniform float isError;
         varying vec3 vPosition;
         
         void main() {
@@ -82,6 +90,17 @@ export class AssetLoader extends THREE.EventDispatcher<AssetLoaderEventMap> {
           // Create fill-up effect
           if (normalizedY > fillProgress) {
             alpha *= 0.3; // Reduce opacity for unfilled parts
+          }
+          
+          // Error state effects
+          if (isError > 0.5) {
+            // Add pulsing effect for error state
+            float pulse = 0.5 + 0.5 * sin(time * 4.0);
+            alpha *= (0.3 + 0.4 * pulse);
+            
+            // Add error pattern
+            float stripe = sin(vPosition.y * 20.0 + time * 2.0);
+            alpha *= (0.7 + 0.3 * step(0.0, stripe));
           }
           
           // Add edge glow
@@ -107,6 +126,45 @@ export class AssetLoader extends THREE.EventDispatcher<AssetLoaderEventMap> {
       const material = this.placeholder.material as THREE.ShaderMaterial
       if (material.uniforms && material.uniforms.fillProgress) {
         material.uniforms.fillProgress.value = progress
+      }
+    }
+  }
+
+  /**
+   * Set placeholder to error state with configurable color and opacity
+   */
+  private setPlaceholderError() {
+    if (this.placeholder && this.placeholder instanceof THREE.Mesh) {
+      const material = this.placeholder.material as THREE.ShaderMaterial
+      if (material.uniforms) {
+        // Change to error color
+        if (material.uniforms.color) {
+          material.uniforms.color.value = new THREE.Color(this.errorColor)
+        }
+        // Set error opacity
+        if (material.uniforms.opacity) {
+          material.uniforms.opacity.value = this.errorOpacity
+        }
+        // Set fill progress to indicate failure
+        if (material.uniforms.fillProgress) {
+          material.uniforms.fillProgress.value = 0.0
+        }
+        // Enable error state
+        if (material.uniforms.isError) {
+          material.uniforms.isError.value = 1.0
+        }
+      }
+    }
+  }
+
+  /**
+   * Update placeholder animation time (call this in your render loop)
+   */
+  public updatePlaceholderAnimation(deltaTime: number) {
+    if (this.placeholder && this.placeholder instanceof THREE.Mesh) {
+      const material = this.placeholder.material as THREE.ShaderMaterial
+      if (material.uniforms && material.uniforms.time) {
+        material.uniforms.time.value += deltaTime
       }
     }
   }
@@ -182,6 +240,8 @@ export class AssetLoader extends THREE.EventDispatcher<AssetLoaderEventMap> {
       enableCaching = true,
       placeholderColor = 0x4fc3f7,
       placeholderOpacity = 0.8,
+      errorColor = 0xff4444,
+      errorOpacity = 0.5,
     } = options
 
     // Check cache first
@@ -199,6 +259,10 @@ export class AssetLoader extends THREE.EventDispatcher<AssetLoaderEventMap> {
       this.dispatchEvent({ type: 'loaded', asset: cachedClone })
       return cachedClone
     }
+
+    // Store error styling options
+    this.errorColor = errorColor
+    this.errorOpacity = errorOpacity
 
     // Create placeholder if size is provided
     if (size) {
@@ -240,6 +304,8 @@ export class AssetLoader extends THREE.EventDispatcher<AssetLoaderEventMap> {
       this.dispatchEvent({ type: 'loaded', asset })
       return asset
     } catch (error) {
+      // Set placeholder to error state
+      this.setPlaceholderError()
       this.dispatchEvent({ type: 'error', error: error as Error })
       throw error
     }

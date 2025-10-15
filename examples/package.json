@@ -17,7 +17,8 @@
     "@tonybfox/threejs-terrain": "workspace:*",
     "@tonybfox/threejs-asset-loader": "workspace:*",
     "@tonybfox/threejs-sunlight": "workspace:*",
-    "@tonybfox/threejs-compass": "workspace:*"
+    "@tonybfox/threejs-compass": "workspace:*",
+    "@tonybfox/threejs-view-helper": "workspace:*"
   },
   "devDependencies": {
     "@types/three": "^0.180.0",

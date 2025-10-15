@@ -1,0 +1,167 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Three.js View Helper Example</title>
+    <style>
+      body {
+        margin: 0;
+        padding: 0;
+        overflow: hidden;
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        background-color: #0f0f0f;
+      }
+
+      .controls {
+        position: absolute;
+        top: 20px;
+        left: 20px;
+        background: rgba(0, 0, 0, 0.8);
+        border-radius: 8px;
+        padding: 20px;
+        color: white;
+        font-size: 14px;
+        z-index: 1000;
+        min-width: 250px;
+        backdrop-filter: blur(10px);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+      }
+
+      .controls h3 {
+        margin: 0 0 15px 0;
+        color: #4caf50;
+        font-size: 16px;
+      }
+
+      .control-group {
+        margin-bottom: 15px;
+      }
+
+      .control-group label {
+        display: block;
+        margin-bottom: 5px;
+        color: #ccc;
+      }
+
+      .control-group input,
+      .control-group select {
+        width: 100%;
+        padding: 8px;
+        background: rgba(255, 255, 255, 0.1);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        border-radius: 4px;
+        color: white;
+        font-size: 12px;
+      }
+
+      .control-group input[type='range'] {
+        height: 20px;
+      }
+
+      .control-group button {
+        width: 100%;
+        padding: 10px;
+        background: #4caf50;
+        border: none;
+        border-radius: 4px;
+        color: white;
+        cursor: pointer;
+        font-size: 12px;
+        transition: background-color 0.3s;
+      }
+
+      .control-group button:hover {
+        background: #45a049;
+      }
+
+      .control-group button:disabled {
+        background: #666;
+        cursor: not-allowed;
+      }
+
+      .info {
+        position: absolute;
+        bottom: 20px;
+        left: 20px;
+        background: rgba(0, 0, 0, 0.8);
+        border-radius: 8px;
+        padding: 15px;
+        color: white;
+        font-size: 12px;
+        max-width: 300px;
+        backdrop-filter: blur(10px);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+      }
+
+      .info h4 {
+        margin: 0 0 10px 0;
+        color: #4caf50;
+      }
+
+      .info p {
+        margin: 5px 0;
+        line-height: 1.4;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="controls">
+      <h3>View Helper Controls</h3>
+
+      <div class="control-group">
+        <label for="position">Position:</label>
+        <select id="position">
+          <option value="bottom-right">Bottom Right</option>
+          <option value="bottom-left">Bottom Left</option>
+          <option value="top-right">Top Right</option>
+          <option value="top-left">Top Left</option>
+        </select>
+      </div>
+
+      <div class="control-group">
+        <label for="size">Size: <span id="sizeValue">128</span>px</label>
+        <input type="range" id="size" min="64" max="256" value="128" />
+      </div>
+
+      <div class="control-group">
+        <label for="offsetX"
+          >Offset X: <span id="offsetXValue">20</span>px</label
+        >
+        <input type="range" id="offsetX" min="0" max="100" value="20" />
+      </div>
+
+      <div class="control-group">
+        <label for="offsetY"
+          >Offset Y: <span id="offsetYValue">20</span>px</label
+        >
+        <input type="range" id="offsetY" min="0" max="100" value="20" />
+      </div>
+
+      <div class="control-group">
+        <button id="resetCamera">Reset Camera</button>
+      </div>
+
+      <div class="control-group">
+        <button id="toggleAnimation" disabled>Stop Animation</button>
+      </div>
+    </div>
+
+    <div class="info">
+      <h4>View Helper Demo</h4>
+      <p>
+        <strong>Click</strong> on the colored axes in the bottom-right corner to
+        orient the camera.
+      </p>
+      <p><strong>Mouse:</strong> Orbit camera with left click + drag</p>
+      <p><strong>Zoom:</strong> Mouse wheel or right click + drag</p>
+      <p><strong>Pan:</strong> Middle click + drag</p>
+      <p>
+        The view helper shows your current viewing angle and allows quick
+        navigation to standard views.
+      </p>
+    </div>
+
+    <script type="module" src="./main.js"></script>
+  </body>
+</html>
