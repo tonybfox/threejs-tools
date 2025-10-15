@@ -26,7 +26,8 @@
     "@tonybfox/threejs-asset-loader": "workspace:*",
     "@tonybfox/threejs-sunlight": "workspace:*",
     "@tonybfox/threejs-compass": "workspace:*",
-    "@tonybfox/threejs-view-helper": "workspace:*"
+    "@tonybfox/threejs-view-helper": "workspace:*",
+    "@tonybfox/threejs-transform-controls": "workspace:*"
   },
   "keywords": [
     "threejs",
