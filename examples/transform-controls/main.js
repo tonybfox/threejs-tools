@@ -62,6 +62,7 @@ scene.add(torus)
 
 // Create transform controls
 const transformControls = new TransformControls(camera, renderer.domElement)
+transformControls.setRotationSnap(THREE.MathUtils.degToRad(15)) // Snap rotation to 15 degrees
 scene.add(transformControls.getHelper())
 
 // Initially attach to the first object
@@ -89,22 +90,6 @@ transformControls.addEventListener('mouseUp', () => {
 // Keyboard shortcuts
 window.addEventListener('keydown', (event) => {
   switch (event.key.toLowerCase()) {
-    case 'a':
-      transformControls.setMode('all')
-      updateModeButtons('all')
-      break
-    case 'g':
-      transformControls.setMode('translate')
-      updateModeButtons('translate')
-      break
-    case 'r':
-      transformControls.setMode('rotate')
-      updateModeButtons('rotate')
-      break
-    case 's':
-      transformControls.setMode('scale')
-      updateModeButtons('scale')
-      break
     case ' ':
       event.preventDefault()
       transformControls.enabled = !transformControls.enabled
@@ -164,24 +149,6 @@ function createObjectButtons() {
 function updateObjectSelection(object) {
   document.querySelectorAll('.object-button').forEach((btn) => {
     btn.classList.toggle('selected', btn.dataset.object === object.name)
-  })
-}
-
-function createModeButtons() {
-  const container = document.getElementById('modeButtons')
-  const modes = ['all', 'translate', 'rotate', 'scale']
-
-  modes.forEach((mode) => {
-    const button = UIHelpers.createButton(
-      mode.charAt(0).toUpperCase() + mode.slice(1),
-      () => {
-        transformControls.setMode(mode)
-        updateModeButtons(mode)
-      }
-    )
-    button.dataset.mode = mode
-    if (mode === 'all') button.classList.add('active')
-    container.appendChild(button)
   })
 }
 
@@ -319,7 +286,7 @@ function updateVisibilityCheckboxes() {
 
 // Initialize UI
 createObjectButtons()
-createModeButtons()
+
 createSpaceButtons()
 createSizeSlider()
 createSnappingControls()

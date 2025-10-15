@@ -405,6 +405,24 @@ class TransformControls extends Controls<{}> {
      */
     defineProperty('maxZ', Infinity)
 
+    /**
+     * The minimum allowed rotation angle during rotation (in radians).
+     *
+     * @name TransformControls#minRotation
+     * @type {number}
+     * @default -2 * Math.PI (-360 degrees)
+     */
+    defineProperty('minRotation', -2 * Math.PI)
+
+    /**
+     * The maximum allowed rotation angle during rotation (in radians).
+     *
+     * @name TransformControls#maxRotation
+     * @type {number}
+     * @default 2 * Math.PI (360 degrees)
+     */
+    defineProperty('maxRotation', 2 * Math.PI)
+
     // Reusable utility variables
 
     const worldPosition = new Vector3()
@@ -848,6 +866,12 @@ class TransformControls extends Controls<{}> {
         this.rotationAngle =
           Math.round(this.rotationAngle / this.rotationSnap) * this.rotationSnap
 
+      // Clamp rotation angle to min/max limits
+      this.rotationAngle = Math.max(
+        this.minRotation,
+        Math.min(this.maxRotation, this.rotationAngle)
+      )
+
       // Apply rotate
       if (space === 'local' && axis !== 'E' && axis !== 'XYZE') {
         object.quaternion.copy(this._quaternionStart)
@@ -962,10 +986,10 @@ class TransformControls extends Controls<{}> {
   /**
    * Sets the given transformation mode.
    *
-   * @param {'translate'|'rotate'|'scale'} mode - The transformation mode to set.
+   * @param {'translate'|'rotate'|'scale'|'all'} mode - The transformation mode to set.
    */
   setMode(mode) {
-    this.mode = mode
+    // this.mode = mode
   }
 
   /**
@@ -984,6 +1008,24 @@ class TransformControls extends Controls<{}> {
    */
   setRotationSnap(rotationSnap) {
     this.rotationSnap = rotationSnap
+  }
+
+  /**
+   * Sets the minimum rotation angle limit (in radians).
+   *
+   * @param {number} minRotation - The minimum rotation angle to set (in radians).
+   */
+  setMinRotation(minRotation) {
+    this.minRotation = minRotation
+  }
+
+  /**
+   * Sets the maximum rotation angle limit (in radians).
+   *
+   * @param {number} maxRotation - The maximum rotation angle to set (in radians).
+   */
+  setMaxRotation(maxRotation) {
+    this.maxRotation = maxRotation
   }
 
   /**
