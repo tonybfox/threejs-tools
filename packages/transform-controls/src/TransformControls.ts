@@ -1947,17 +1947,26 @@ class TransformControlsGizmo extends Object3D {
       handle.material.color.copy(handle.material._color)
       handle.material.opacity = handle.material._opacity
 
+      // Apply transparency to all materials when dragging
+      if (this.dragging) {
+        handle.material.opacity = 0.2
+      }
+
       if (this.enabled && this.axis) {
         if (handle.name === this.axis) {
           handle.material.color.setHex(0xffff00)
-          handle.material.opacity = 1.0
+          if (!this.dragging) {
+            handle.material.opacity = 1.0
+          }
         } else if (
           this.axis.split('').some(function (a) {
             return handle.name === a
           })
         ) {
           handle.material.color.setHex(0xffff00)
-          handle.material.opacity = 1.0
+          if (!this.dragging) {
+            handle.material.opacity = 1.0
+          }
         }
       }
     }
