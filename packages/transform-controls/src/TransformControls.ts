@@ -87,6 +87,8 @@ class TransformControls extends Controls<{}> {
   _overlay: HTMLDivElement
   _distanceLabel: CSS2DObject
   _activeMode: string // Tracks which mode is active during drag in 'all' mode
+  _rotationArc: Line | null // Arc showing rotation angle
+  _rotationAngleLabel: CSS2DObject // Label showing rotation angle
 
   _offset: Vector3
   _startNorm: Vector3
@@ -172,6 +174,28 @@ class TransformControls extends Controls<{}> {
     this._distanceLabel = new CSS2DObject(labelDiv)
     this._distanceLabel.visible = false
     root.add(this._distanceLabel)
+
+    // Create CSS2D rotation angle label
+    const angleLabelDiv = document.createElement('div')
+    angleLabelDiv.className = 'rotation-angle-label'
+    angleLabelDiv.style.padding = '4px 8px'
+    angleLabelDiv.style.background = 'rgba(0, 0, 0, 0.8)'
+    angleLabelDiv.style.border = '1px solid rgba(255, 255, 255, 0.3)'
+    angleLabelDiv.style.borderRadius = '4px'
+    angleLabelDiv.style.color = '#fff'
+    angleLabelDiv.style.fontSize = '12px'
+    angleLabelDiv.style.fontFamily = 'monospace'
+    angleLabelDiv.style.whiteSpace = 'nowrap'
+    angleLabelDiv.style.pointerEvents = 'none'
+    angleLabelDiv.style.userSelect = 'none'
+    angleLabelDiv.textContent = '0°'
+
+    this._rotationAngleLabel = new CSS2DObject(angleLabelDiv)
+    this._rotationAngleLabel.visible = false
+    root.add(this._rotationAngleLabel)
+
+    // Initialize rotation arc (will be created dynamically)
+    this._rotationArc = null
 
     // Defined getter, setter and store for a property
     function defineProperty(propName: string, defaultValue: any) {
@@ -289,6 +313,16 @@ class TransformControls extends Controls<{}> {
      * @default false
      */
     defineProperty('dragging', false)
+
+    /**
+     * The active transformation mode when in 'all' mode.
+     *
+     * @name TransformControls#activeMode
+     * @type {('translate'|'rotate'|'scale')}
+     * @readonly
+     * @default 'translate'
+     */
+    defineProperty('activeMode', 'translate')
 
     /**
      * Whether the x-axis helper should be visible or not.
@@ -418,8 +452,6 @@ class TransformControls extends Controls<{}> {
     this._quaternionStart = new Quaternion()
     this._scaleStart = new Vector3()
 
-    this._activeMode = 'translate' // Default active mode for 'all' mode
-
     this._getPointer = getPointer.bind(this)
     this._onPointerDown = onPointerDown.bind(this)
     this._onPointerHover = onPointerHover.bind(this)
@@ -530,20 +562,20 @@ class TransformControls extends Controls<{}> {
           _raycaster
         )
         if (intersect && intersect.object.name === this.axis) {
-          this._activeMode = 'scale'
+          this.activeMode = 'scale'
         } else {
           intersect = intersectObjectWithRay(
             this._gizmo.picker['rotate'],
             _raycaster
           )
           if (intersect && intersect.object.name === this.axis) {
-            this._activeMode = 'rotate'
+            this.activeMode = 'rotate'
           } else {
-            this._activeMode = 'translate'
+            this.activeMode = 'translate'
           }
         }
       } else {
-        this._activeMode = this.mode
+        this.activeMode = this.mode
       }
 
       const planeIntersect = intersectObjectWithRay(
@@ -575,7 +607,7 @@ class TransformControls extends Controls<{}> {
       }
 
       this.dragging = true
-      _mouseDownEvent.mode = this.mode === 'all' ? this._activeMode : this.mode
+      _mouseDownEvent.mode = this.mode === 'all' ? this.activeMode : this.mode
       this.dispatchEvent(_mouseDownEvent)
     }
   }
@@ -583,7 +615,7 @@ class TransformControls extends Controls<{}> {
   pointerMove(pointer) {
     const axis = this.axis
     // Use active mode when in 'all' mode, otherwise use the current mode
-    const mode = this.mode === 'all' ? this._activeMode : this.mode
+    const mode = this.mode === 'all' ? this.activeMode : this.mode
     const object = this.object
     let space = this.space
 
@@ -985,12 +1017,13 @@ class TransformControls extends Controls<{}> {
     if (!this.object || !this.dragging) {
       this._overlay.classList.add('hidden')
       this._distanceLabel.visible = false
+      this._rotationAngleLabel.visible = false
       return
     }
 
     if (
       this.mode === 'translate' ||
-      (this.mode === 'all' && this._activeMode === 'translate')
+      (this.mode === 'all' && this.activeMode === 'translate')
     ) {
       // Calculate the distance moved along each axis from the start position
       const xDistance = this.object.position.x - this._positionStart.x
@@ -1011,16 +1044,75 @@ class TransformControls extends Controls<{}> {
 
       this._distanceLabel.position.copy(midPoint)
       this._distanceLabel.visible = true
+      this._rotationAngleLabel.visible = false
 
       // Update label text with total distance
       this._distanceLabel.element.textContent = `${totalDistance.toFixed(3)}`
 
       this._overlay.textContent = `X: ${xDistance.toFixed(2)} Y: ${yDistance.toFixed(2)} Z: ${zDistance.toFixed(2)}`
-    } else if (this.mode === 'rotate') {
+    } else if (
+      this.mode === 'rotate' ||
+      (this.mode === 'all' && this.activeMode === 'rotate')
+    ) {
       this._distanceLabel.visible = false
-      this._overlay.textContent = `X: ${this.object.rotation.x.toFixed(2) * (180 / Math.PI)} Y: ${this.object.rotation.y.toFixed(2) * (180 / Math.PI)} Z: ${this.object.rotation.z.toFixed(2) * (180 / Math.PI)}`
+
+      // Calculate angle in degrees
+      const angleDegrees = (this.rotationAngle * 180) / Math.PI
+
+      // Position the label along the rotation arc
+      // Use a radius slightly larger than the gizmo radius
+      const labelRadius = 0.55
+      const labelAngle = this.rotationAngle / 2 // Position at midpoint of arc
+
+      // Calculate label position based on rotation axis
+      const labelPos = new Vector3()
+
+      if (this.axis === 'X' || this.axis === 'Y' || this.axis === 'Z') {
+        // For axis-aligned rotations, position the label on the arc
+        const axisvec = _unit[this.axis]
+        const perpVector = new Vector3()
+
+        // Get a perpendicular vector to the rotation axis
+        if (Math.abs(axisvec.dot(this.pointStart.clone().normalize())) > 0.99) {
+          // If pointStart is parallel to axis, use a different reference
+          perpVector.copy(this.eye).cross(axisvec).normalize()
+        } else {
+          perpVector.copy(this.pointStart).normalize()
+        }
+
+        // Rotate the perpendicular vector by half the rotation angle
+        const rotQuat = new Quaternion().setFromAxisAngle(axisvec, labelAngle)
+        perpVector.applyQuaternion(rotQuat)
+
+        // Apply local/world orientation
+        if (this.space === 'local') {
+          perpVector.applyQuaternion(this.worldQuaternion)
+        }
+
+        perpVector.multiplyScalar(labelRadius)
+        labelPos.copy(this.worldPosition).add(perpVector)
+      } else {
+        // For E or XYZE mode, position near the arc center
+        labelPos.copy(this.worldPosition)
+        const offsetDir = this.pointStart.clone().normalize()
+
+        // Apply local/world orientation
+        if (this.space === 'local') {
+          offsetDir.applyQuaternion(this.worldQuaternion)
+        }
+
+        offsetDir.multiplyScalar(labelRadius)
+        labelPos.add(offsetDir)
+      }
+
+      this._rotationAngleLabel.position.copy(labelPos)
+      this._rotationAngleLabel.visible = true
+      this._rotationAngleLabel.element.textContent = `${Math.abs(angleDegrees).toFixed(1)}°`
+
+      this._overlay.textContent = `X: ${(this.object.rotation.x * (180 / Math.PI)).toFixed(2)}° Y: ${(this.object.rotation.y * (180 / Math.PI)).toFixed(2)}° Z: ${(this.object.rotation.z * (180 / Math.PI)).toFixed(2)}°`
     } else if (this.mode === 'scale') {
       this._distanceLabel.visible = false
+      this._rotationAngleLabel.visible = false
       this._overlay.textContent = `X: ${this.object.scale.x.toFixed(2)} Y: ${this.object.scale.y.toFixed(2)} Z: ${this.object.scale.z.toFixed(2)}`
     }
     this._overlay.classList.remove('hidden')
@@ -1338,36 +1430,6 @@ class TransformControlsGizmo extends Object3D {
         [new Mesh(arrowGeometry, matBlue), [0, 0, 0.5], [Math.PI / 2, 0, 0]],
         [new Mesh(lineGeometry2, matBlue), null, [Math.PI / 2, 0, 0]],
       ],
-
-      XY: [
-        [
-          new Mesh(
-            new BoxGeometry(0.15, 0.15, 0.01),
-            matBlueTransparent.clone()
-          ),
-          [0.15, 0.15, 0],
-        ],
-      ],
-      YZ: [
-        [
-          new Mesh(
-            new BoxGeometry(0.15, 0.15, 0.01),
-            matRedTransparent.clone()
-          ),
-          [0, 0.15, 0.15],
-          [0, Math.PI / 2, 0],
-        ],
-      ],
-      XZ: [
-        [
-          new Mesh(
-            new BoxGeometry(0.15, 0.15, 0.01),
-            matGreenTransparent.clone()
-          ),
-          [0.15, 0, 0.15],
-          [-Math.PI / 2, 0, 0],
-        ],
-      ],
     }
 
     const pickerTranslate = {
@@ -1403,27 +1465,6 @@ class TransformControlsGizmo extends Object3D {
         [
           new Mesh(new CylinderGeometry(0.2, 0, 0.6, 4), matInvisible),
           [0, 0, -0.3],
-          [-Math.PI / 2, 0, 0],
-        ],
-      ],
-      XYZ: [[new Mesh(new OctahedronGeometry(0.2, 0), matInvisible)]],
-      XY: [
-        [
-          new Mesh(new BoxGeometry(0.2, 0.2, 0.01), matInvisible),
-          [0.15, 0.15, 0],
-        ],
-      ],
-      YZ: [
-        [
-          new Mesh(new BoxGeometry(0.2, 0.2, 0.01), matInvisible),
-          [0, 0.15, 0.15],
-          [0, Math.PI / 2, 0],
-        ],
-      ],
-      XZ: [
-        [
-          new Mesh(new BoxGeometry(0.2, 0.2, 0.01), matInvisible),
-          [0.15, 0, 0.15],
           [-Math.PI / 2, 0, 0],
         ],
       ],
@@ -1479,6 +1520,15 @@ class TransformControlsGizmo extends Object3D {
 
     const helperRotate = {
       AXIS: [],
+      START: [
+        [new Line(lineGeometry.clone(), matHelper), null, null, null, 'helper'],
+      ],
+      END: [
+        [new Line(lineGeometry.clone(), matHelper), null, null, null, 'helper'],
+      ],
+      ARC: [
+        [new Line(new BufferGeometry(), matHelper), null, null, null, 'helper'],
+      ],
     }
 
     const pickerRotate = {
@@ -1630,7 +1680,7 @@ class TransformControlsGizmo extends Object3D {
       this.gizmo['scale'].visible = true
 
       this.helper['translate'].visible = true
-      this.helper['rotate'].visible = false
+      this.helper['rotate'].visible = true
       this.helper['scale'].visible = false
     } else {
       // Show only gizmos for current transform mode
@@ -1653,6 +1703,7 @@ class TransformControlsGizmo extends Object3D {
       handles = handles.concat(this.gizmo['rotate'].children)
       handles = handles.concat(this.gizmo['scale'].children)
       handles = handles.concat(this.helper['translate'].children)
+      handles = handles.concat(this.helper['rotate'].children)
     } else {
       handles = handles.concat(this.picker[this.mode].children)
       handles = handles.concat(this.gizmo[this.mode].children)
@@ -1754,11 +1805,222 @@ class TransformControlsGizmo extends Object3D {
             handle.visible = false
           }
         } else if (handle.name === 'START') {
-          handle.position.copy(this.worldPositionStart)
-          handle.visible = this.dragging
+          // For rotation mode, show a line from center to start point
+          if (this.mode === 'rotate' || this.mode === 'all') {
+            handle.position.copy(this.worldPosition)
+            // Only show when dragging rotation
+            const isRotating =
+              this.mode === 'rotate' ||
+              (this.mode === 'all' && this.activeMode === 'rotate')
+            handle.visible = this.dragging && isRotating
+
+            if (handle.visible) {
+              // Respect space setting (local vs world)
+              const rotSpace = this.space
+
+              // Apply quaternion based on space - use START quaternion to keep line fixed
+              if (rotSpace === 'local') {
+                handle.quaternion.copy(this.worldQuaternionStart)
+              } else {
+                handle.quaternion.copy(_identityQuaternion)
+              }
+
+              // Get the rotation axis
+              let rotAxis = new Vector3()
+              if (this.axis === 'X' || this.axis === 'Y' || this.axis === 'Z') {
+                rotAxis.copy(_unit[this.axis])
+              } else if (this.axis === 'E' || this.axis === 'XYZE') {
+                rotAxis.copy(this.rotationAxis)
+                if (rotSpace === 'local') {
+                  rotAxis.applyQuaternion(
+                    this.worldQuaternionStart.clone().invert()
+                  )
+                }
+              }
+
+              // Transform pointStart to handle's local space
+              let startPoint = this.pointStart.clone()
+              if (rotSpace === 'local') {
+                startPoint.applyQuaternion(
+                  this.worldQuaternionStart.clone().invert()
+                )
+              }
+
+              // Project onto the plane perpendicular to the rotation axis
+              // Remove the component along the rotation axis
+              const dotProduct = startPoint.dot(rotAxis)
+              startPoint.sub(rotAxis.clone().multiplyScalar(dotProduct))
+              startPoint.normalize()
+              startPoint.multiplyScalar(0.45)
+
+              // Update the line geometry to point from center to pointStart
+              const startLineGeometry = new BufferGeometry()
+              startLineGeometry.setAttribute(
+                'position',
+                new Float32BufferAttribute(
+                  [0, 0, 0, startPoint.x, startPoint.y, startPoint.z],
+                  3
+                )
+              )
+              handle.geometry.dispose()
+              handle.geometry = startLineGeometry
+            }
+          } else {
+            handle.position.copy(this.worldPositionStart)
+            handle.visible = this.dragging && this.mode === 'translate'
+          }
+        } else if (handle.name === 'ARC') {
+          // Draw arc showing rotation angle
+          const isRotating =
+            this.mode === 'rotate' ||
+            (this.mode === 'all' && this.activeMode === 'rotate')
+          handle.visible = this.dragging && isRotating
+
+          if (handle.visible && this.rotationAngle !== 0) {
+            handle.position.copy(this.worldPosition)
+
+            // Respect space setting (local vs world)
+            const rotSpace = this.space
+
+            // Apply quaternion based on space - use START quaternion to keep arc fixed
+            if (rotSpace === 'local') {
+              handle.quaternion.copy(this.worldQuaternionStart)
+            } else {
+              handle.quaternion.copy(_identityQuaternion)
+            }
+
+            // Create arc geometry
+            const arcRadius = 0.45
+            const segments = Math.max(
+              8,
+              Math.floor(Math.abs(this.rotationAngle) * 50)
+            )
+            const arcPoints = []
+
+            // Get the rotation axis in local space
+            let rotAxis = new Vector3()
+            if (this.axis === 'X' || this.axis === 'Y' || this.axis === 'Z') {
+              rotAxis.copy(_unit[this.axis])
+              // In local mode, axis is already in local space, no transformation needed
+              // In world mode, we need to transform from world to handle space
+              if (rotSpace !== 'local') {
+                // Axis stays as is in world mode
+              }
+            } else if (this.axis === 'E' || this.axis === 'XYZE') {
+              rotAxis.copy(this.rotationAxis)
+              // Transform rotation axis to handle's local space
+              if (rotSpace === 'local') {
+                rotAxis.applyQuaternion(
+                  this.worldQuaternionStart.clone().invert()
+                )
+              }
+            }
+
+            // Transform pointStart to handle's local space
+            let startDir = this.pointStart.clone()
+            if (rotSpace === 'local') {
+              // Transform from world space to local space
+              startDir.applyQuaternion(
+                this.worldQuaternionStart.clone().invert()
+              )
+            }
+
+            // Project onto the plane perpendicular to the rotation axis
+            const dotProduct = startDir.dot(rotAxis)
+            startDir.sub(rotAxis.clone().multiplyScalar(dotProduct))
+            startDir.normalize()
+
+            // Create the arc by rotating the start point around the axis
+            for (let j = 0; j <= segments; j++) {
+              const angle = (this.rotationAngle * j) / segments
+              const point = startDir.clone()
+              const arcQuat = new Quaternion().setFromAxisAngle(rotAxis, angle)
+              point.applyQuaternion(arcQuat)
+              point.multiplyScalar(arcRadius)
+              arcPoints.push(point.x, point.y, point.z)
+            }
+
+            const arcGeometry = new BufferGeometry()
+            arcGeometry.setAttribute(
+              'position',
+              new Float32BufferAttribute(arcPoints, 3)
+            )
+            handle.geometry.dispose()
+            handle.geometry = arcGeometry
+          }
         } else if (handle.name === 'END') {
-          handle.position.copy(this.worldPosition)
-          handle.visible = this.dragging
+          // For rotation mode, show a line from center to current rotation point
+          if (this.mode === 'rotate' || this.mode === 'all') {
+            handle.position.copy(this.worldPosition)
+            // Only show when dragging rotation
+            const isRotating =
+              this.mode === 'rotate' ||
+              (this.mode === 'all' && this.activeMode === 'rotate')
+            handle.visible = this.dragging && isRotating
+
+            if (handle.visible) {
+              // Respect space setting (local vs world)
+              const rotSpace = this.space
+
+              // Use START quaternion to match the arc's coordinate space
+              if (rotSpace === 'local') {
+                handle.quaternion.copy(this.worldQuaternionStart)
+              } else {
+                handle.quaternion.copy(_identityQuaternion)
+              }
+
+              // Calculate end point by rotating start point (same as arc)
+              const endLineGeometry = new BufferGeometry()
+
+              // Get the rotation axis in local space
+              let rotAxis = new Vector3()
+              if (this.axis === 'X' || this.axis === 'Y' || this.axis === 'Z') {
+                rotAxis.copy(_unit[this.axis])
+              } else if (this.axis === 'E' || this.axis === 'XYZE') {
+                rotAxis.copy(this.rotationAxis)
+                if (rotSpace === 'local') {
+                  rotAxis.applyQuaternion(
+                    this.worldQuaternionStart.clone().invert()
+                  )
+                }
+              }
+
+              // Transform pointStart to handle's local space
+              let startDir = this.pointStart.clone()
+              if (rotSpace === 'local') {
+                startDir.applyQuaternion(
+                  this.worldQuaternionStart.clone().invert()
+                )
+              }
+
+              // Project onto the plane perpendicular to the rotation axis
+              const dotProduct = startDir.dot(rotAxis)
+              startDir.sub(rotAxis.clone().multiplyScalar(dotProduct))
+              startDir.normalize()
+
+              // Rotate by the full rotation angle to get end point
+              const endPoint = startDir.clone()
+              const arcQuat = new Quaternion().setFromAxisAngle(
+                rotAxis,
+                this.rotationAngle
+              )
+              endPoint.applyQuaternion(arcQuat)
+              endPoint.multiplyScalar(0.45)
+
+              endLineGeometry.setAttribute(
+                'position',
+                new Float32BufferAttribute(
+                  [0, 0, 0, endPoint.x, endPoint.y, endPoint.z],
+                  3
+                )
+              )
+              handle.geometry.dispose()
+              handle.geometry = endLineGeometry
+            }
+          } else {
+            handle.position.copy(this.worldPosition)
+            handle.visible = false
+          }
         } else if (handle.name === 'DELTA') {
           handle.position.copy(this.worldPositionStart)
           handle.quaternion.copy(this.worldQuaternionStart)
