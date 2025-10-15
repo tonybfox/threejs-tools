@@ -63,7 +63,17 @@ export class SceneSetup {
 
   setupEventListeners() {
     window.addEventListener('resize', () => {
-      this.camera.aspect = window.innerWidth / window.innerHeight
+      const aspect = window.innerWidth / window.innerHeight
+
+      if (this.camera instanceof THREE.PerspectiveCamera) {
+        this.camera.aspect = aspect
+      } else if (this.camera instanceof THREE.OrthographicCamera) {
+        const halfHeight = Math.abs(this.camera.top - this.camera.bottom) / 2
+        const halfWidth = halfHeight * aspect
+        this.camera.left = -halfWidth
+        this.camera.right = halfWidth
+      }
+
       this.camera.updateProjectionMatrix()
       this.renderer.setSize(window.innerWidth, window.innerHeight)
     })

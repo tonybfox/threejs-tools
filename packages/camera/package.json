@@ -10,5 +10,8 @@
   "scripts": {
     "build": "tsup src/index.ts --format esm,cjs --dts",
     "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "camera-controls": "^3.1.0"
   }
 }
