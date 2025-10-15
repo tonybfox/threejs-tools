@@ -80,7 +80,7 @@ export class InfiniteGrid extends THREE.Object3D {
      float g2 = getGrid(uSize2);
      
      vec3 color = mix(uColor1, uColor2, g2);
-     gl_FragColor = vec4(color, mix(0.5, 1.0, g1 + g2) * d);
+     gl_FragColor = vec4(color, (g1 + g2) * d);
      
      // Apply fog
      float fogFactor = smoothstep(uFogNear, uFogFar, length(worldPosition));
