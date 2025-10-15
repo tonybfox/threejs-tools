@@ -3,42 +3,86 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Three.js Compass Tool</title>
+    <title>Compass Overlay Example</title>
     <style>
       body {
         margin: 0;
         padding: 0;
-        font-family: Arial, sans-serif;
-        background: #0f0f0f;
-        color: #fff;
         overflow: hidden;
+        background: #000;
+        font-family: Arial, sans-serif;
       }
 
-      canvas {
-        display: block;
+      #info {
+        position: fixed;
+        top: 10px;
+        left: 10px;
+        color: white;
+        background: rgba(0, 0, 0, 0.7);
+        padding: 10px;
+        border-radius: 5px;
+        z-index: 999;
       }
 
-      .back-link {
-        position: absolute;
+      #controls {
+        position: fixed;
         top: 10px;
         right: 10px;
-        background: rgba(15, 15, 15, 0.95);
         color: white;
-        padding: 10px 20px;
-        text-decoration: none;
-        border-radius: 6px;
-        backdrop-filter: blur(10px);
-        border: 1px solid rgba(255, 255, 255, 0.1);
-        z-index: 1000;
+        background: rgba(0, 0, 0, 0.7);
+        padding: 10px;
+        border-radius: 5px;
+        z-index: 999;
       }
 
-      .back-link:hover {
-        background: rgba(15, 15, 15, 1);
+      button {
+        margin: 2px;
+        padding: 5px 10px;
+        background: #333;
+        color: white;
+        border: 1px solid #666;
+        border-radius: 3px;
+        cursor: pointer;
+      }
+
+      button:hover {
+        background: #555;
+      }
+
+      #canvas {
+        display: block;
       }
     </style>
   </head>
   <body>
-    <a href="../" class="back-link">← Back to Examples</a>
+    <div id="info">
+      <h3>Compass Overlay Example</h3>
+      <p>Use WASD keys or arrow keys to move around.</p>
+      <p>Use mouse to rotate the camera.</p>
+      <p>The red arrow always points to world Z- (north).</p>
+      <p><strong>Double-click the compass to reset camera to north!</strong></p>
+    </div>
+
+    <div id="controls">
+      <div>
+        <button onclick="toggleCompass()">Toggle Compass</button>
+      </div>
+      <div>
+        <button onclick="setCompassSize(60)">Small</button>
+        <button onclick="setCompassSize(100)">Medium</button>
+        <button onclick="setCompassSize(140)">Large</button>
+      </div>
+      <div>
+        <button onclick="setCompassPosition('top-left')">Top Left</button>
+        <button onclick="setCompassPosition('top-right')">Top Right</button>
+        <button onclick="setCompassPosition('bottom-left')">Bottom Left</button>
+        <button onclick="setCompassPosition('bottom-right')">
+          Bottom Right
+        </button>
+      </div>
+    </div>
+
+    <canvas id="canvas"></canvas>
     <script type="module" src="./main.js"></script>
   </body>
 </html>

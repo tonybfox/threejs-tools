@@ -87,6 +87,9 @@ importers:
       '@tonybfox/threejs-camera':
         specifier: workspace:*
         version: link:../camera
+      '@tonybfox/threejs-compass':
+        specifier: workspace:*
+        version: link:../compass
       '@tonybfox/threejs-grid':
         specifier: workspace:*
         version: link:../grid

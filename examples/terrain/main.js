@@ -1,6 +1,7 @@
 import * as THREE from 'three'
 import { SceneSetup, UIHelpers } from '../shared/utils.js'
 import { TerrainTool } from '@tonybfox/threejs-terrain'
+import { CompassOverlay } from '@tonybfox/threejs-compass'
 
 // Scene setup using shared utilities
 const sceneSetup = new SceneSetup({
@@ -17,6 +18,23 @@ const { scene, camera, renderer, controls } = sceneSetup
 // Adjust camera far plane for terrain viewing
 camera.far = 50000
 camera.updateProjectionMatrix()
+
+// Create compass overlay
+let compass = new CompassOverlay(camera, {
+  size: 100,
+  position: 'bottom-right',
+  offset: { x: 20, y: 20 },
+  colors: {
+    background: '#1a1a1a',
+    border: '#444444',
+    arrow: '#ff4444',
+    text: '#ffffff',
+    ticks: '#666666',
+  },
+})
+
+// Start the compass
+compass.start()
 
 // Predefined locations
 const locations = {

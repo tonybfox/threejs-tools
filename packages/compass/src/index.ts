@@ -1,2 +1,1 @@
-export * from './CompassTool'
-export * from './CompassTypes'
+export * from './CompassOverlay'
