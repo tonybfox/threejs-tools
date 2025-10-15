@@ -1304,7 +1304,7 @@ class TransformControlsGizmo extends Object3D {
     lineGeometry2.translate(0, 0.25, 0)
 
     function CircleGeometry(radius, arc) {
-      const geometry = new TorusGeometry(radius, 0.03, 3, 64, arc * Math.PI * 2)
+      const geometry = new TorusGeometry(radius, 0.02, 3, 64, arc * Math.PI * 2)
       geometry.rotateY(Math.PI / 2)
       geometry.rotateX(Math.PI / 2)
       return geometry
