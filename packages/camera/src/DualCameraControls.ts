@@ -82,6 +82,7 @@ export class DualCameraControls extends CameraControls {
   private readonly domElementRef: HTMLElement
   private activeMode: CameraMode
   private readonly minOrthoHalfHeight: number
+  private readonly updateClock = new THREE.Clock()
 
   constructor(
     renderer: THREE.WebGLRenderer,
@@ -317,6 +318,15 @@ export class DualCameraControls extends CameraControls {
       tempVec3B.z,
       enableTransition
     )
+  }
+
+  /**
+   * Updates the controls using an internally managed clock.
+   * Useful when you don't want to pass delta time each frame.
+   */
+  updateDelta(): ReturnType<CameraControls['update']> {
+    const delta = this.updateClock.getDelta()
+    return super.update(delta)
   }
 
   private updateOrthographicFrustum(

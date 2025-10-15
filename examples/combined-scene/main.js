@@ -67,9 +67,11 @@ scene.add(axesHelper)
 
 // Adjust camera to better view the scene
 camera.position.set(50, 40, 50)
-camera.lookAt(0, 0, 0)
-controls.target.set(0, 0, 0)
-controls.update()
+if (controls) {
+  void controls.setLookAt(50, 40, 50, 0, 0, 0, false)
+} else {
+  camera.lookAt(0, 0, 0)
+}
 
 // Helper function to get day of year
 function getDayOfYear(date) {

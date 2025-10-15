@@ -55,6 +55,12 @@ const viewHelper = new ViewHelper(camera, renderer.domElement, {
   },
 })
 
+// When using DualCameraControls (or another compatible controller), pass it via `controls`:
+// const viewHelper = new ViewHelper(camera, renderer.domElement, {
+//   ...,
+//   controls,
+// })
+
 // In your animation loop
 function animate() {
   requestAnimationFrame(animate)
@@ -89,6 +95,7 @@ interface ViewHelperOptions {
   position?: 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right' // Position (default: 'bottom-right')
   offset?: { x: number; y: number } // Offset from corner (default: { x: 20, y: 20 })
   center?: THREE.Vector3 // Focus point for camera animations (default: origin)
+  controls?: ViewHelperCameraController // Camera controller used for transitions (optional)
   labels?: {
     // Axis labels
     x?: string // X-axis label (default: 'X')
@@ -102,6 +109,28 @@ interface ViewHelperOptions {
     z: string // Z-axis color (default: '#4488ff')
     background: string // Background color (default: '#000000')
   }
+}
+```
+
+### Camera controller integration
+
+If you supply the `controls` option, the helper will drive camera moves through that controller. The controller must satisfy the following minimal contract (implemented by `DualCameraControls`):
+
+```typescript
+interface ViewHelperCameraController {
+  camera: THREE.Camera
+  getPosition(target: THREE.Vector3): THREE.Vector3
+  getTarget(target: THREE.Vector3): THREE.Vector3
+  setLookAt(
+    positionX: number,
+    positionY: number,
+    positionZ: number,
+    targetX: number,
+    targetY: number,
+    targetZ: number,
+    enableTransition?: boolean
+  ): Promise<void> | void
+  stop?(): void
 }
 ```
 

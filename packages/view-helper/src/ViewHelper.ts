@@ -7,6 +7,22 @@ const AXIS_COLORS = {
   z: '#3185eb',
 } as const
 
+export interface ViewHelperCameraController {
+  camera: THREE.Camera
+  getPosition(target: THREE.Vector3): THREE.Vector3
+  getTarget(target: THREE.Vector3): THREE.Vector3
+  setLookAt(
+    positionX: number,
+    positionY: number,
+    positionZ: number,
+    targetX: number,
+    targetY: number,
+    targetZ: number,
+    enableTransition?: boolean
+  ): Promise<void> | void
+  stop?(): void
+}
+
 export interface ViewHelperOptions {
   container?: HTMLElement
   size?: number
@@ -18,6 +34,7 @@ export interface ViewHelperOptions {
     y?: string
     z?: string
   }
+  controls?: ViewHelperCameraController
 }
 
 // Define event types for the view helper
@@ -33,11 +50,13 @@ export interface ViewHelperEvent {
 export class ViewHelper extends THREE.EventDispatcher<ViewHelperEventMap> {
   private camera: THREE.Camera
   private domElement: HTMLElement
-  private options: Required<ViewHelperOptions>
+  private options: Required<Omit<ViewHelperOptions, 'controls'>>
   private scene: THREE.Scene
   private orthoCamera: THREE.OrthographicCamera
   private renderer?: THREE.WebGLRenderer
   private viewport: THREE.Vector4 = new THREE.Vector4()
+  private controls?: ViewHelperCameraController
+  private pointerDownHandler!: (event: PointerEvent) => void
 
   // Animation properties
   public animating: boolean = false
@@ -49,6 +68,7 @@ export class ViewHelper extends THREE.EventDispatcher<ViewHelperEventMap> {
   private dummy: THREE.Object3D = new THREE.Object3D()
   private radius: number = 0
   private turnRate: number = 2 * Math.PI // turn rate in angles per second
+  private tempVecA: THREE.Vector3 = new THREE.Vector3()
 
   // Interactive elements
   private interactiveObjects: THREE.Object3D[] = []
@@ -76,8 +96,15 @@ export class ViewHelper extends THREE.EventDispatcher<ViewHelperEventMap> {
     options: ViewHelperOptions = {}
   ) {
     super()
-    this.camera = camera
+    this.controls = options.controls
+    this.camera = this.controls?.camera ?? camera
     this.domElement = domElement || document.body
+
+    const defaultCenter =
+      options.center ??
+      (this.controls
+        ? this.controls.getTarget(new THREE.Vector3())
+        : new THREE.Vector3())
 
     // Set default options
     this.options = {
@@ -85,7 +112,7 @@ export class ViewHelper extends THREE.EventDispatcher<ViewHelperEventMap> {
       size: options.size || 128,
       position: options.position || 'bottom-right',
       offset: options.offset || { x: 20, y: 20 },
-      center: options.center || new THREE.Vector3(),
+      center: defaultCenter.clone(),
       labels: {
         x: options.labels?.x || '',
         y: options.labels?.y || '',
@@ -104,6 +131,20 @@ export class ViewHelper extends THREE.EventDispatcher<ViewHelperEventMap> {
     this.createAxes()
     this.createSprites()
     this.setupEventListeners()
+  }
+
+  private syncActiveCamera(): THREE.Camera {
+    if (this.controls) {
+      this.camera = this.controls.camera
+    }
+    return this.camera
+  }
+
+  private getCameraPosition(target: THREE.Vector3): THREE.Vector3 {
+    if (this.controls) {
+      return this.controls.getPosition(target)
+    }
+    return target.copy(this.camera.position)
   }
 
   private createAxes(): void {
@@ -242,18 +283,19 @@ export class ViewHelper extends THREE.EventDispatcher<ViewHelperEventMap> {
   }
 
   private setupEventListeners(): void {
-    const handleClick = (event: PointerEvent) => {
+    this.pointerDownHandler = (event: PointerEvent) => {
       this.handleClick(event)
     }
-
-    this.domElement.addEventListener('pointerdown', handleClick)
+    this.domElement.addEventListener('pointerdown', this.pointerDownHandler)
   }
 
   public render(renderer: THREE.WebGLRenderer): void {
     this.renderer = renderer
 
+    const activeCamera = this.syncActiveCamera()
+
     // Update helper orientation to match camera
-    this.scene.quaternion.copy(this.camera.quaternion).invert()
+    this.scene.quaternion.copy(activeCamera.quaternion).invert()
     this.scene.updateMatrixWorld()
 
     // Calculate viewport position based on options, accounting for device pixel ratio
@@ -314,6 +356,8 @@ export class ViewHelper extends THREE.EventDispatcher<ViewHelperEventMap> {
   public handleClick(event: PointerEvent): boolean {
     if (this.animating || !this.renderer) return false
 
+    this.syncActiveCamera()
+
     const rect = this.domElement.getBoundingClientRect()
     const size = this.options.size // Use logical size for click detection
 
@@ -361,8 +405,12 @@ export class ViewHelper extends THREE.EventDispatcher<ViewHelperEventMap> {
       const intersection = intersects[0]
       const object = intersection.object
       this.prepareAnimationData(object, this.center)
-      this.animating = true
-      this.dispatchEvent({ type: 'animationStart' })
+      if (this.controls) {
+        this.startControlsAnimation(this.center)
+      } else {
+        this.animating = true
+        this.dispatchEvent({ type: 'animationStart' })
+      }
       return true
     }
 
@@ -407,18 +455,60 @@ export class ViewHelper extends THREE.EventDispatcher<ViewHelperEventMap> {
         return
     }
 
-    this.radius = this.camera.position.distanceTo(focusPoint)
+    const cameraPosition = this.getCameraPosition(this.tempVecA)
+    this.radius = cameraPosition.distanceTo(focusPoint)
     this.targetPosition.multiplyScalar(this.radius).add(focusPoint)
 
     this.dummy.position.copy(focusPoint)
-    this.dummy.lookAt(this.camera.position)
+    this.dummy.lookAt(cameraPosition)
     this.q1.copy(this.dummy.quaternion)
 
     this.dummy.lookAt(this.targetPosition)
     this.q2.copy(this.dummy.quaternion)
   }
 
+  private startControlsAnimation(focusPoint: THREE.Vector3): void {
+    const controls = this.controls
+    if (!controls) {
+      return
+    }
+
+    controls.stop?.()
+    this.animating = true
+    this.dispatchEvent({ type: 'animationStart' })
+
+    const applyLookAt = () =>
+      controls.setLookAt(
+        this.targetPosition.x,
+        this.targetPosition.y,
+        this.targetPosition.z,
+        focusPoint.x,
+        focusPoint.y,
+        focusPoint.z,
+        true
+      )
+
+    try {
+      void Promise.resolve(applyLookAt()).catch((error) => {
+        console.warn('ViewHelper: Unable to set camera look-at.', error)
+      }).finally(() => {
+        this.animating = false
+        this.dispatchEvent({ type: 'animationEnd' })
+      })
+    } catch (error) {
+      console.warn('ViewHelper: Unable to set camera look-at.', error)
+      this.animating = false
+      this.dispatchEvent({ type: 'animationEnd' })
+    }
+  }
+
   public update(delta: number): void {
+    this.syncActiveCamera()
+
+    if (this.controls) {
+      return
+    }
+
     if (!this.animating) return
 
     const step = delta * this.turnRate
@@ -486,9 +576,8 @@ export class ViewHelper extends THREE.EventDispatcher<ViewHelperEventMap> {
     })
 
     // Remove event listeners
-    this.domElement.removeEventListener(
-      'pointerdown',
-      this.handleClick.bind(this)
-    )
+    if (this.pointerDownHandler) {
+      this.domElement.removeEventListener('pointerdown', this.pointerDownHandler)
+    }
   }
 }

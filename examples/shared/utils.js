@@ -1,5 +1,5 @@
 import * as THREE from 'three'
-import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
+import { DualCameraControls } from '@tonybfox/threejs-camera'
 
 /**
  * Common Three.js scene utilities for examples
@@ -9,21 +9,47 @@ export class SceneSetup {
     const {
       backgroundColor = 0x0f0f0f,
       cameraPosition = [10, 10, 10],
+      cameraTarget = [0, 0, 0],
+      initialCameraMode = 'perspective',
       enableShadows = true,
       enableControls = true,
       antialias = true,
+      cameraControlsOptions = {},
+      controlsSmoothTime,
     } = options
+
+    const perspectiveOptions = {
+      fov: 75,
+      near: 0.1,
+      far: 1000,
+      ...(cameraControlsOptions.perspective ?? {}),
+    }
+
+    if (!perspectiveOptions.position) {
+      perspectiveOptions.position = cameraPosition
+    }
+
+    const orthographicOptions = {
+      near: 0.1,
+      far: 1000,
+      ...(cameraControlsOptions.orthographic ?? {}),
+    }
+
+    if (!orthographicOptions.position) {
+      orthographicOptions.position = cameraPosition
+    }
+
+    const dualCameraOptions = {
+      initialMode:
+        cameraControlsOptions.initialMode ?? initialCameraMode,
+      initialTarget:
+        cameraControlsOptions.initialTarget ?? cameraTarget,
+      perspective: perspectiveOptions,
+      orthographic: orthographicOptions,
+    }
 
     this.scene = new THREE.Scene()
     this.scene.background = new THREE.Color(backgroundColor)
-
-    this.camera = new THREE.PerspectiveCamera(
-      75,
-      window.innerWidth / window.innerHeight,
-      0.1,
-      1000
-    )
-    this.camera.position.set(...cameraPosition)
 
     this.renderer = new THREE.WebGLRenderer({ antialias })
     this.renderer.setSize(window.innerWidth, window.innerHeight)
@@ -35,11 +61,27 @@ export class SceneSetup {
 
     document.body.appendChild(this.renderer.domElement)
 
-    if (enableControls) {
-      this.controls = new OrbitControls(this.camera, this.renderer.domElement)
-      this.controls.enableDamping = true
-      this.controls.dampingFactor = 0.05
+    this.clock = new THREE.Clock()
+
+    const dualCameraControls = new DualCameraControls(
+      this.renderer,
+      dualCameraOptions
+    )
+
+    if (controlsSmoothTime !== undefined) {
+      dualCameraControls.smoothTime = controlsSmoothTime
+    } else if (cameraControlsOptions.smoothTime !== undefined) {
+      dualCameraControls.smoothTime = cameraControlsOptions.smoothTime
     }
+
+    dualCameraControls.enabled = enableControls
+    this.cameraControls = dualCameraControls
+    this.controls = enableControls ? dualCameraControls : undefined
+    this.camera = dualCameraControls.activeCamera
+
+    dualCameraControls.addEventListener('modechange', (event) => {
+      this.camera = event.camera
+    })
 
     this.setupLighting()
     this.setupEventListeners()
@@ -63,19 +105,29 @@ export class SceneSetup {
 
   setupEventListeners() {
     window.addEventListener('resize', () => {
-      const aspect = window.innerWidth / window.innerHeight
+      const width = window.innerWidth
+      const height = window.innerHeight
 
-      if (this.camera instanceof THREE.PerspectiveCamera) {
-        this.camera.aspect = aspect
-      } else if (this.camera instanceof THREE.OrthographicCamera) {
-        const halfHeight = Math.abs(this.camera.top - this.camera.bottom) / 2
-        const halfWidth = halfHeight * aspect
-        this.camera.left = -halfWidth
-        this.camera.right = halfWidth
+      if (this.cameraControls) {
+        this.cameraControls.handleResize(width, height)
+        this.camera = this.cameraControls.activeCamera
+      } else {
+        const aspect = height === 0 ? 1 : width / height
+
+        if (this.camera instanceof THREE.PerspectiveCamera) {
+          this.camera.aspect = aspect
+        } else if (this.camera instanceof THREE.OrthographicCamera) {
+          const halfHeight =
+            Math.abs(this.camera.top - this.camera.bottom) / 2
+          const halfWidth = halfHeight * aspect
+          this.camera.left = -halfWidth
+          this.camera.right = halfWidth
+        }
+
+        this.camera.updateProjectionMatrix()
       }
 
-      this.camera.updateProjectionMatrix()
-      this.renderer.setSize(window.innerWidth, window.innerHeight)
+      this.renderer.setSize(width, height)
     })
   }
 
@@ -89,19 +141,38 @@ export class SceneSetup {
     return ground
   }
 
-  updateCamera(newCamera) {
+  updateCamera(newCamera, options = {}) {
     this.camera = newCamera
+
+    const detachPreference =
+      options.detachControls === undefined ? true : options.detachControls
+
+    const shouldDetach =
+      detachPreference &&
+      this.cameraControls &&
+      newCamera !== this.cameraControls.activeCamera &&
+      newCamera !== this.cameraControls.perspectiveCamera &&
+      newCamera !== this.cameraControls.orthographicCamera
+
+    if (shouldDetach) {
+      this.cameraControls.dispose()
+      this.cameraControls = null
+      this.controls = undefined
+    }
   }
 
   animate(customAnimationCallback) {
     requestAnimationFrame(() => this.animate(customAnimationCallback))
 
-    if (this.controls) {
-      this.controls.update()
+    const delta = this.clock.getDelta()
+
+    if (this.cameraControls) {
+      this.cameraControls.updateDelta()
+      this.camera = this.cameraControls.activeCamera
     }
 
     if (customAnimationCallback) {
-      customAnimationCallback()
+      customAnimationCallback(delta)
     }
 
     this.renderer.render(this.scene, this.camera)

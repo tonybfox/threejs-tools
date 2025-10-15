@@ -116,8 +116,19 @@ compass.addEventListener('resetToNorth', () => {
   // force look direction to world -Z (0, 0, -1) from current position
   const lookAt = new THREE.Vector3(cameraPos.x, cameraPos.y, cameraPos.z - 1)
 
-  controls.target.copy(lookAt)
-  controls.update()
+  if (controls) {
+    void controls.setLookAt(
+      cameraPos.x,
+      cameraPos.y,
+      cameraPos.z,
+      lookAt.x,
+      lookAt.y,
+      lookAt.z,
+      true
+    )
+  } else {
+    camera.lookAt(lookAt)
+  }
 })
 
 // Handle window resize
@@ -147,6 +158,10 @@ function addTextLabel(text, position, color) {
 
 function animate() {
   requestAnimationFrame(animate)
+
+  if (controls) {
+    controls.updateDelta()
+  }
 
   renderer.render(scene, camera)
 }

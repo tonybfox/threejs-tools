@@ -187,6 +187,20 @@
         border-color: #4fc3f7;
         background: rgba(79, 195, 247, 0.2);
       }
+      .back-link {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        background: rgba(0, 0, 0, 0.8);
+        color: white;
+        padding: 10px 20px;
+        text-decoration: none;
+        border-radius: 5px;
+        backdrop-filter: blur(10px);
+      }
+      .back-link:hover {
+        background: rgba(0, 0, 0, 0.9);
+      }
     </style>
   </head>
   <body>
@@ -228,6 +242,7 @@
       </div>
     </div>
 
+    <a href="../" class="back-link">← Back to Examples</a>
     <script type="module" src="./main.js"></script>
   </body>
 </html>

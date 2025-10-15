@@ -386,8 +386,24 @@ controlPanel.appendChild(
   UIHelpers.createButton(
     'Reset North',
     () => {
-      sceneSetup.controls.target.set(0, 0, 0)
-      sceneSetup.controls.update()
+      const activeControls =
+        sceneSetup.controls ?? sceneSetup.cameraControls
+      if (activeControls) {
+        const focusPosition = activeControls.getPosition(
+          new THREE.Vector3()
+        )
+        void activeControls.setLookAt(
+          focusPosition.x,
+          focusPosition.y,
+          focusPosition.z,
+          0,
+          0,
+          0,
+          false
+        )
+      } else {
+        sceneSetup.camera.lookAt(0, 0, 0)
+      }
     },
     'secondary'
   )

@@ -58,6 +58,7 @@ function init() {
     position: 'bottom-right',
     offset: { x: 20, y: 20 },
     center: new THREE.Vector3(0, 0, 0),
+    controls,
   })
 
   // Add event listeners for view helper
@@ -71,64 +72,11 @@ function init() {
     updateAnimationButton(false)
   })
 
-  // Create demo objects
-  // createDemoScene()
-
   // Setup controls
   setupControls()
 
   // Start animation loop
   animate()
-}
-
-function createDemoScene() {
-  // Create a ground plane
-  const groundGeometry = new THREE.PlaneGeometry(20, 20)
-  const groundMaterial = new THREE.MeshLambertMaterial({
-    color: 0x404040,
-    transparent: true,
-    opacity: 0.8,
-  })
-  const ground = new THREE.Mesh(groundGeometry, groundMaterial)
-  ground.rotation.x = -Math.PI / 2
-  ground.receiveShadow = true
-  scene.add(ground)
-
-  // Create some demo objects to help with orientation
-  const materials = [
-    new THREE.MeshLambertMaterial({ color: 0xff4466 }), // Red
-    new THREE.MeshLambertMaterial({ color: 0x88ff44 }), // Green
-    new THREE.MeshLambertMaterial({ color: 0x4488ff }), // Blue
-    new THREE.MeshLambertMaterial({ color: 0xffaa00 }), // Orange
-    new THREE.MeshLambertMaterial({ color: 0xff44aa }), // Magenta
-  ]
-
-  // Create boxes at different positions
-  const positions = [
-    [3, 1, 3],
-    [-3, 1, 3],
-    [3, 1, -3],
-    [-3, 1, -3],
-    [0, 2, 0],
-  ]
-
-  positions.forEach((pos, index) => {
-    const geometry = new THREE.BoxGeometry(1, 2, 1)
-    const material = materials[index % materials.length]
-    const box = new THREE.Mesh(geometry, material)
-    box.position.set(...pos)
-    box.castShadow = true
-    box.receiveShadow = true
-    scene.add(box)
-  })
-
-  // Add coordinate axes for reference
-  const axesHelper = new THREE.AxesHelper(5)
-  scene.add(axesHelper)
-
-  // Add grid helper
-  const gridHelper = new THREE.GridHelper(20, 20, 0x444444, 0x222222)
-  scene.add(gridHelper)
 }
 
 function setupControls() {
@@ -152,6 +100,7 @@ function setupControls() {
         z: '#4488ff',
         background: '#000000',
       },
+      controls,
     })
     setupViewHelperEvents()
   })
@@ -178,6 +127,7 @@ function setupControls() {
         z: '#4488ff',
         background: '#000000',
       },
+      controls,
     })
     setupViewHelperEvents()
   })
@@ -204,6 +154,7 @@ function setupControls() {
         z: '#4488ff',
         background: '#000000',
       },
+      controls,
     })
     setupViewHelperEvents()
   })
@@ -229,6 +180,7 @@ function setupControls() {
         z: '#4488ff',
         background: '#000000',
       },
+      controls,
     })
     setupViewHelperEvents()
   })
@@ -236,9 +188,9 @@ function setupControls() {
   // Reset camera button
   const resetButton = document.getElementById('resetCamera')
   resetButton.addEventListener('click', () => {
-    camera.position.set(10, 10, 10)
-    camera.lookAt(0, 0, 0)
-    controls.reset()
+    controls.setPosition(10, 10, 10, true)
+    controls.setTarget(0, 0, 0, true)
+    controls.update(0)
   })
 
   // Animation toggle button
@@ -275,7 +227,7 @@ function animate() {
 
   // Update controls
   if (controls) {
-    controls.update()
+    controls.updateDelta()
   }
 
   // Update view helper

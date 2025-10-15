@@ -12,7 +12,7 @@ const sceneSetup = new SceneSetup({
   antialias: true,
 })
 
-const { scene, camera, renderer, controls: orbitControls } = sceneSetup
+const { scene, camera, renderer, controls } = sceneSetup
 
 // Create CSS2DRenderer for labels
 const labelRenderer = new CSS2DRenderer()
@@ -71,7 +71,7 @@ let selectedObject = cube
 
 // When dragging, disable orbit controls
 transformControls.addEventListener('dragging-changed', (event) => {
-  orbitControls.enabled = !event.value
+  controls.enabled = !event.value
 })
 
 // Log changes
@@ -307,6 +307,7 @@ createVisibilityControls()
 // Animation loop
 function animate() {
   requestAnimationFrame(animate)
+  if (controls) controls.updateDelta()
   renderer.render(scene, camera)
   labelRenderer.render(scene, camera)
 }

@@ -454,8 +454,20 @@ terrainTool.addEventListener('meshLoaded', (event) => {
 
   // Center camera on terrain
   const mesh = event.mesh
-  controls.target.copy(mesh.position)
-  controls.update()
+  if (controls) {
+    const currentPosition = controls.getPosition(new THREE.Vector3())
+    void controls.setLookAt(
+      currentPosition.x,
+      currentPosition.y,
+      currentPosition.z,
+      mesh.position.x,
+      mesh.position.y,
+      mesh.position.z,
+      false
+    )
+  } else {
+    camera.lookAt(mesh.position)
+  }
 })
 
 terrainTool.addEventListener('error', (event) => {
