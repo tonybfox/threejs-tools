@@ -86,34 +86,6 @@ transformControls.addEventListener('mouseUp', () => {
   console.log('Transform ended')
 })
 
-// Object selection - click to select
-const raycaster = new THREE.Raycaster()
-const mouse = new THREE.Vector2()
-
-function onMouseClick(event) {
-  // Calculate mouse position in normalized device coordinates
-  mouse.x = (event.clientX / window.innerWidth) * 2 - 1
-  mouse.y = -(event.clientY / window.innerHeight) * 2 + 1
-
-  // Update the picking ray
-  raycaster.setFromCamera(mouse, camera)
-
-  // Calculate objects intersecting the picking ray
-  const intersects = raycaster.intersectObjects(objects, false)
-
-  if (intersects.length > 0) {
-    const object = intersects[0].object
-    if (object !== selectedObject) {
-      selectedObject = object
-      transformControls.attach(object)
-      updateObjectSelection(object)
-      console.log('Selected:', object.name)
-    }
-  }
-}
-
-//renderer.domElement.addEventListener('click', onMouseClick, false)
-
 // Keyboard shortcuts
 window.addEventListener('keydown', (event) => {
   switch (event.key.toLowerCase()) {
@@ -248,7 +220,7 @@ function createSizeSlider() {
   const slider = UIHelpers.createSlider(
     0.1,
     3,
-    1,
+    0.75,
     (value) => {
       transformControls.setSize(parseFloat(value))
     },

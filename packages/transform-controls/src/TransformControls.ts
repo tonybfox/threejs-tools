@@ -302,7 +302,7 @@ class TransformControls extends Controls<{}> {
      * @type {number}
      * @default 1
      */
-    defineProperty('size', 1)
+    defineProperty('size', 0.75)
 
     /**
      * Whether dragging is currently performed or not.
