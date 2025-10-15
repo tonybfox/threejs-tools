@@ -74,17 +74,21 @@ export class InfiniteGrid extends THREE.Object3D {
    }
    
    void main() {
-     float d = 1.0 - min(distance(vec3(0.0, 0.0, 0.0), worldPosition) / uFogFar, 1.0);
-     
      float g1 = getGrid(uSize1);
      float g2 = getGrid(uSize2);
      
-     vec3 color = mix(uColor1, uColor2, g2);
-     gl_FragColor = vec4(color, (g1 + g2) * d);
+     // Calculate fog factor using both near and far
+     float dist = length(worldPosition);
+     float fogFactor = smoothstep(uFogNear, uFogFar, dist);
      
-     // Apply fog
-     float fogFactor = smoothstep(uFogNear, uFogFar, length(worldPosition));
-     gl_FragColor.rgb = mix(gl_FragColor.rgb, uFogColor, fogFactor);
+     // Mix grid colors
+     vec3 color = mix(uColor1, uColor2, g2);
+     
+     // Apply fog to color and use inverse fog factor for alpha (fade out with distance)
+     vec3 finalColor = mix(color, uFogColor, fogFactor);
+     float alpha = (g1 + g2) * (1.0 - fogFactor);
+     
+     gl_FragColor = vec4(finalColor, alpha);
    }
  `,
       transparent: true,
@@ -156,20 +160,24 @@ export class InfiniteGrid extends THREE.Object3D {
   }
 
   setFogNear(near: number): void {
-    this.gridMaterial.uniforms.uFogNear.value = near
+    const fogFar = this.gridMaterial.uniforms.uFogFar.value
+    const clampedNear = Math.min(near, fogFar)
+    this.gridMaterial.uniforms.uFogNear.value = clampedNear
     this.eventDispatcher.dispatchEvent({
       type: 'fogChanged',
       property: 'near',
-      value: near,
+      value: clampedNear,
     })
   }
 
   setFogFar(far: number): void {
-    this.gridMaterial.uniforms.uFogFar.value = far
+    const fogNear = this.gridMaterial.uniforms.uFogNear.value
+    const clampedFar = Math.max(far, fogNear)
+    this.gridMaterial.uniforms.uFogFar.value = clampedFar
     this.eventDispatcher.dispatchEvent({
       type: 'fogChanged',
       property: 'far',
-      value: far,
+      value: clampedFar,
     })
   }
 
