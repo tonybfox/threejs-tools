@@ -40,10 +40,8 @@ export class SceneSetup {
     }
 
     const dualCameraOptions = {
-      initialMode:
-        cameraControlsOptions.initialMode ?? initialCameraMode,
-      initialTarget:
-        cameraControlsOptions.initialTarget ?? cameraTarget,
+      initialMode: cameraControlsOptions.initialMode ?? initialCameraMode,
+      initialTarget: cameraControlsOptions.initialTarget ?? cameraTarget,
       perspective: perspectiveOptions,
       orthographic: orthographicOptions,
     }
@@ -117,8 +115,7 @@ export class SceneSetup {
         if (this.camera instanceof THREE.PerspectiveCamera) {
           this.camera.aspect = aspect
         } else if (this.camera instanceof THREE.OrthographicCamera) {
-          const halfHeight =
-            Math.abs(this.camera.top - this.camera.bottom) / 2
+          const halfHeight = Math.abs(this.camera.top - this.camera.bottom) / 2
           const halfWidth = halfHeight * aspect
           this.camera.left = -halfWidth
           this.camera.right = halfWidth

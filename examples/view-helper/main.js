@@ -188,7 +188,7 @@ function setupControls() {
   // Reset camera button
   const resetButton = document.getElementById('resetCamera')
   resetButton.addEventListener('click', () => {
-    controls.setPosition(10, 10, 10, true)
+    controls.setPosition(5, 5, 5, true)
     controls.setTarget(0, 0, 0, true)
     controls.update(0)
   })

@@ -98,11 +98,7 @@ function stopCameraMotion() {
   cameraControls.stop()
 }
 
-function moveCameraTo(
-  position,
-  target = origin,
-  enableTransition = true
-) {
+function moveCameraTo(position, target = origin, enableTransition = true) {
   const destination = position.isVector3
     ? position.clone()
     : new THREE.Vector3(...position)
@@ -245,7 +241,9 @@ function updateCameraInfo() {
   )}, ${pos.y.toFixed(1)}, ${pos.z.toFixed(1)})`
   cameraRotationDiv.textContent = `Rotation: (${THREE.MathUtils.radToDeg(
     rot.x
-  ).toFixed(0)}°, ${THREE.MathUtils.radToDeg(rot.y).toFixed(0)}°, ${THREE.MathUtils.radToDeg(
+  ).toFixed(
+    0
+  )}°, ${THREE.MathUtils.radToDeg(rot.y).toFixed(0)}°, ${THREE.MathUtils.radToDeg(
     rot.z
   ).toFixed(0)}°)`
   cameraTypeDiv.textContent = `Type: ${
@@ -256,14 +254,12 @@ function updateCameraInfo() {
 let infoUpdateAccumulator = 0
 
 function customAnimation() {
-  const delta = clock.getDelta()
-
   if (isOrbiting) {
     cameraControls.azimuthAngle += orbitSettings.speed * delta
     cameraControls.polarAngle = orbitSettings.polarAngle
   }
 
-  cameraControls.update(delta)
+  cameraControls.updateDelta()
 
   // Rotate objects for visual interest
   cube.rotation.x += 0.005
