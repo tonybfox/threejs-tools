@@ -137,9 +137,15 @@ function createObjectButtons() {
     if (obj === selectedObject) button.classList.add('selected')
     button.textContent = obj.name
     button.onclick = () => {
-      selectedObject = obj
-      transformControls.attach(obj)
-      updateObjectSelection(obj)
+      if (selectedObject === obj) {
+        transformControls.detach()
+        selectedObject = null
+        updateObjectSelection(null)
+      } else {
+        selectedObject = obj
+        transformControls.attach(obj)
+        updateObjectSelection(obj)
+      }
     }
     button.dataset.object = obj.name
     container.appendChild(button)
@@ -147,9 +153,15 @@ function createObjectButtons() {
 }
 
 function updateObjectSelection(object) {
-  document.querySelectorAll('.object-button').forEach((btn) => {
-    btn.classList.toggle('selected', btn.dataset.object === object.name)
-  })
+  if (object === null) {
+    document.querySelectorAll('.object-button').forEach((btn) => {
+      btn.classList.remove('selected')
+    })
+  } else {
+    document.querySelectorAll('.object-button').forEach((btn) => {
+      btn.classList.toggle('selected', btn.dataset.object === object.name)
+    })
+  }
 }
 
 function updateModeButtons(activeMode) {
