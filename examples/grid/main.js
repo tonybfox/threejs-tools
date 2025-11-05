@@ -1,4 +1,4 @@
-import { InfiniteGrid } from '@tonybfox/threejs-grid'
+import { InfiniteGrid } from '@tonybfox/threejs-tools'
 import { SceneSetup, ObjectFactory, UIHelpers } from '../shared/utils.js'
 
 // Scene setup using shared utilities

@@ -1,7 +1,6 @@
 import * as THREE from 'three'
 import { SceneSetup, UIHelpers } from '../shared/utils.js'
-import { TerrainTool } from '@tonybfox/threejs-terrain'
-import { CompassOverlay } from '@tonybfox/threejs-compass'
+import { TerrainTool, CompassOverlay } from '@tonybfox/threejs-tools'
 
 // Scene setup using shared utilities
 const sceneSetup = new SceneSetup({

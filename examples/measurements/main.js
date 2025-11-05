@@ -1,7 +1,7 @@
 import * as THREE from 'three'
 import { CSS2DRenderer } from 'three/examples/jsm/renderers/CSS2DRenderer.js'
 import { SceneSetup, ObjectFactory, UIHelpers } from '../shared/utils.js'
-import { MeasurementTool, SnapMode } from '@tonybfox/threejs-measurements'
+import { MeasurementTool, SnapMode } from '@tonybfox/threejs-tools'
 
 // Scene setup using shared utilities
 const sceneSetup = new SceneSetup({

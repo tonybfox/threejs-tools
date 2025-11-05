@@ -1,5 +1,5 @@
 import * as THREE from 'three'
-import { TransformControls } from '@tonybfox/threejs-transform-controls'
+import { TransformControls } from '@tonybfox/threejs-tools'
 import { CSS2DRenderer } from 'three/examples/jsm/renderers/CSS2DRenderer.js'
 import { SceneSetup, ObjectFactory, UIHelpers } from '../shared/utils.js'
 

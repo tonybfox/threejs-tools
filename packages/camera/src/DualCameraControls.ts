@@ -168,6 +168,8 @@ export class DualCameraControls extends CameraControls {
     this.orthographicCamera = orthographicCamera
     this.activeMode = initialMode
     this.minOrthoHalfHeight = orthoHalfHeight
+
+    this.updateInputBindingsForMode(initialMode)
   }
 
   get mode(): CameraMode {
@@ -201,6 +203,7 @@ export class DualCameraControls extends CameraControls {
 
     this.camera = this.perspectiveCamera
     this.activeMode = 'perspective'
+    this.updateInputBindingsForMode('perspective')
 
     void this.setLookAt(
       position.x,
@@ -241,6 +244,7 @@ export class DualCameraControls extends CameraControls {
 
     this.camera = this.orthographicCamera
     this.activeMode = 'orthographic'
+    this.updateInputBindingsForMode('orthographic')
 
     void this.setLookAt(
       position.x,
@@ -327,6 +331,24 @@ export class DualCameraControls extends CameraControls {
   updateDelta(): ReturnType<CameraControls['update']> {
     const delta = this.updateClock.getDelta()
     return super.update(delta)
+  }
+
+  private updateInputBindingsForMode(mode: CameraMode) {
+    const { ACTION } = CameraControls
+
+    if (mode === 'orthographic') {
+      this.mouseButtons.left = ACTION.TRUCK
+      this.mouseButtons.right = ACTION.ROTATE
+      this.mouseButtons.wheel = ACTION.ZOOM
+      this.touches.one = ACTION.TOUCH_TRUCK
+      this.touches.two = ACTION.TOUCH_ZOOM_TRUCK
+    } else {
+      this.mouseButtons.left = ACTION.ROTATE
+      this.mouseButtons.right = ACTION.TRUCK
+      this.mouseButtons.wheel = ACTION.DOLLY
+      this.touches.one = ACTION.TOUCH_ROTATE
+      this.touches.two = ACTION.TOUCH_DOLLY_TRUCK
+    }
   }
 
   private updateOrthographicFrustum(

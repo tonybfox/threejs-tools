@@ -1,6 +1,5 @@
 import * as THREE from 'three'
-import { CompassOverlay } from '@tonybfox/threejs-compass'
-import { SunLightTool } from '@tonybfox/threejs-sunlight'
+import { CompassOverlay, SunLightTool } from '@tonybfox/threejs-tools'
 import { SceneSetup, ObjectFactory, UIHelpers } from '../shared/utils.js'
 
 let compass

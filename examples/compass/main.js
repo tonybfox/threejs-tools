@@ -1,6 +1,6 @@
 import * as THREE from 'three'
 import { SceneSetup } from '../shared/utils.js'
-import { CompassOverlay } from '@tonybfox/threejs-compass'
+import { CompassOverlay } from '@tonybfox/threejs-tools'
 
 // Global variables for the demo
 let compass

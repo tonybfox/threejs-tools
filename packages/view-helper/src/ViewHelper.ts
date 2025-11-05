@@ -298,31 +298,29 @@ export class ViewHelper extends THREE.EventDispatcher<ViewHelperEventMap> {
     this.scene.quaternion.copy(activeCamera.quaternion).invert()
     this.scene.updateMatrixWorld()
 
-    // Calculate viewport position based on options, accounting for device pixel ratio
-    const pixelRatio = renderer.getPixelRatio()
-    const size = this.options.size * pixelRatio
-    const canvasWidth = renderer.domElement.width
-    const canvasHeight = renderer.domElement.height
+    const size = this.options.size
+    const canvasWidth = renderer.domElement.width / renderer.getPixelRatio()
+    const canvasHeight = renderer.domElement.height / renderer.getPixelRatio()
 
     let x: number, y: number
 
     switch (this.options.position) {
       case 'top-left':
-        x = this.options.offset.x * pixelRatio
-        y = canvasHeight - size - this.options.offset.y * pixelRatio
+        x = this.options.offset.x
+        y = canvasHeight - size - this.options.offset.y
         break
       case 'top-right':
-        x = canvasWidth - size - this.options.offset.x * pixelRatio
-        y = canvasHeight - size - this.options.offset.y * pixelRatio
+        x = canvasWidth - size - this.options.offset.x
+        y = canvasHeight - size - this.options.offset.y
         break
       case 'bottom-left':
-        x = this.options.offset.x * pixelRatio
-        y = this.options.offset.y * pixelRatio
+        x = this.options.offset.x
+        y = this.options.offset.y
         break
       case 'bottom-right':
       default:
-        x = canvasWidth - size - this.options.offset.x * pixelRatio
-        y = this.options.offset.y * pixelRatio
+        x = canvasWidth - size - this.options.offset.x
+        y = this.options.offset.y
         break
     }
 
@@ -489,12 +487,14 @@ export class ViewHelper extends THREE.EventDispatcher<ViewHelperEventMap> {
       )
 
     try {
-      void Promise.resolve(applyLookAt()).catch((error) => {
-        console.warn('ViewHelper: Unable to set camera look-at.', error)
-      }).finally(() => {
-        this.animating = false
-        this.dispatchEvent({ type: 'animationEnd' })
-      })
+      void Promise.resolve(applyLookAt())
+        .catch((error) => {
+          console.warn('ViewHelper: Unable to set camera look-at.', error)
+        })
+        .finally(() => {
+          this.animating = false
+          this.dispatchEvent({ type: 'animationEnd' })
+        })
     } catch (error) {
       console.warn('ViewHelper: Unable to set camera look-at.', error)
       this.animating = false
@@ -577,7 +577,10 @@ export class ViewHelper extends THREE.EventDispatcher<ViewHelperEventMap> {
 
     // Remove event listeners
     if (this.pointerDownHandler) {
-      this.domElement.removeEventListener('pointerdown', this.pointerDownHandler)
+      this.domElement.removeEventListener(
+        'pointerdown',
+        this.pointerDownHandler
+      )
     }
   }
 }

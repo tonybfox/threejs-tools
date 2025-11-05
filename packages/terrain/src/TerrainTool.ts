@@ -180,10 +180,7 @@ export class TerrainTool extends THREE.EventDispatcher<TerrainToolEvents> {
     const metersPerDegreeLat = 111320
     const metersPerDegreeLon =
       111320 *
-      Math.max(
-        Math.abs(Math.cos((center.latitude * Math.PI) / 180)),
-        1e-6
-      )
+      Math.max(Math.abs(Math.cos((center.latitude * Math.PI) / 180)), 1e-6)
 
     const latRange = dimensions.depth / metersPerDegreeLat
     const lonRange = dimensions.width / metersPerDegreeLon
@@ -442,8 +439,8 @@ export class TerrainTool extends THREE.EventDispatcher<TerrainToolEvents> {
     const widthWithPadding = dimensions.width * (1 + appliedPadding)
     const depthWithPadding = dimensions.depth * (1 + appliedPadding)
 
-    const halfDepthDegrees = (depthWithPadding / 2) / metersPerDegreeLat
-    const halfWidthDegrees = (widthWithPadding / 2) / metersPerDegreeLon
+    const halfDepthDegrees = depthWithPadding / 2 / metersPerDegreeLat
+    const halfWidthDegrees = widthWithPadding / 2 / metersPerDegreeLon
 
     const clamp = (value: number, min: number, max: number) =>
       Math.min(Math.max(value, min), max)
@@ -503,7 +500,9 @@ export class TerrainTool extends THREE.EventDispatcher<TerrainToolEvents> {
       typeof URL === 'undefined' ||
       typeof URL.createObjectURL !== 'function'
     ) {
-      throw new Error('URL.createObjectURL is not available in this environment')
+      throw new Error(
+        'URL.createObjectURL is not available in this environment'
+      )
     }
 
     return URL.createObjectURL(blob)

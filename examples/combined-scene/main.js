@@ -1,8 +1,10 @@
 import * as THREE from 'three'
-import { SceneSetup, UIHelpers } from '../shared/utils.js'
-import { TerrainTool } from '@tonybfox/threejs-terrain'
-import { CompassOverlay } from '@tonybfox/threejs-compass'
-import { SunLightTool } from '@tonybfox/threejs-sunlight'
+import { SceneSetup, UIHelpers, ObjectFactory } from '../shared/utils.js'
+import {
+  TerrainTool,
+  CompassOverlay,
+  SunLightTool,
+} from '@tonybfox/threejs-tools'
 
 // Fixed location for this example
 const FIXED_LOCATION = {
@@ -26,44 +28,6 @@ const { scene, camera, renderer, controls } = sceneSetup
 // Adjust camera far plane for terrain viewing
 camera.far = 50000
 camera.updateProjectionMatrix()
-
-// Add a temporary ground plane for reference until terrain loads
-const tempGroundGeometry = new THREE.PlaneGeometry(200, 200)
-const tempGroundMaterial = new THREE.MeshLambertMaterial({
-  color: 0x8b7355,
-  side: THREE.DoubleSide,
-})
-const tempGround = new THREE.Mesh(tempGroundGeometry, tempGroundMaterial)
-tempGround.rotation.x = -Math.PI / 2
-tempGround.receiveShadow = true
-tempGround.name = 'temporary-ground'
-scene.add(tempGround)
-
-// Add some reference objects to make the scene visible
-const referenceBox = new THREE.Mesh(
-  new THREE.BoxGeometry(10, 10, 10),
-  new THREE.MeshStandardMaterial({ color: 0xff6b6b })
-)
-referenceBox.position.set(0, 5, 0)
-referenceBox.castShadow = true
-referenceBox.receiveShadow = true
-referenceBox.name = 'reference-box'
-scene.add(referenceBox)
-
-const referenceSphere = new THREE.Mesh(
-  new THREE.SphereGeometry(5, 32, 32),
-  new THREE.MeshStandardMaterial({ color: 0x4ecdc4 })
-)
-referenceSphere.position.set(20, 5, 20)
-referenceSphere.castShadow = true
-referenceSphere.receiveShadow = true
-referenceSphere.name = 'reference-sphere'
-scene.add(referenceSphere)
-
-// Add axes helper for orientation
-const axesHelper = new THREE.AxesHelper(30)
-axesHelper.name = 'axes-helper'
-scene.add(axesHelper)
 
 // Adjust camera to better view the scene
 camera.position.set(50, 40, 50)
@@ -128,6 +92,7 @@ const terrainTool = new TerrainTool(scene, {
   baseColor: 0xffffff,
   wireframe: false,
   useDemoData: false,
+  receiveShadow: true,
   mapbox:
     useMapboxImagery && mapboxAccessToken
       ? {
@@ -148,6 +113,10 @@ const ambientLight = scene.children.find(
 const initialSun = scene.children.find(
   (child) => child instanceof THREE.DirectionalLight
 )
+
+const cube = ObjectFactory.createBox([2, 2, 2], 0x4fc3f7, [-30, 3, 20])
+cube.castShadow = true
+sceneSetup.scene.add(cube)
 
 // Create sun light tool
 const sunLightTool = new SunLightTool(scene, {
@@ -540,15 +509,6 @@ loadTerrainBtn.addEventListener('click', async () => {
     )
 
     // Remove temporary reference objects once terrain is loaded
-    const tempGround = scene.getObjectByName('temporary-ground')
-    const refBox = scene.getObjectByName('reference-box')
-    const refSphere = scene.getObjectByName('reference-sphere')
-    const axesHelper = scene.getObjectByName('axes-helper')
-
-    if (tempGround) scene.remove(tempGround)
-    if (refBox) scene.remove(refBox)
-    if (refSphere) scene.remove(refSphere)
-    if (axesHelper) scene.remove(axesHelper)
 
     loadTerrainBtn.textContent = '✓ Loaded!'
     setTimeout(() => {
@@ -616,15 +576,6 @@ terrainTool
   )
   .then(() => {
     // Remove temporary reference objects once terrain is loaded
-    const tempGround = scene.getObjectByName('temporary-ground')
-    const refBox = scene.getObjectByName('reference-box')
-    const refSphere = scene.getObjectByName('reference-sphere')
-    const axesHelper = scene.getObjectByName('axes-helper')
-
-    if (tempGround) scene.remove(tempGround)
-    if (refBox) scene.remove(refBox)
-    if (refSphere) scene.remove(refSphere)
-    if (axesHelper) scene.remove(axesHelper)
 
     console.log('Terrain loaded successfully!')
   })

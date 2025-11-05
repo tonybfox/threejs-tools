@@ -1,8 +1,101 @@
 {
-  "name": "threejs-tools",
+  "name": "@tonybfox/threejs-tools",
   "version": "1.0.0",
-  "description": "",
-  "private": true,
+  "description": "A single entry point that bundles all Three.js tools (camera, terrain, measurements, helpers, and more).",
+  "private": false,
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.cjs"
+    },
+    "./asset-loader": {
+      "types": "./dist/asset-loader/index.d.ts",
+      "import": "./dist/asset-loader/index.mjs",
+      "require": "./dist/asset-loader/index.cjs"
+    },
+    "./camera": {
+      "types": "./dist/camera/index.d.ts",
+      "import": "./dist/camera/index.mjs",
+      "require": "./dist/camera/index.cjs"
+    },
+    "./compass": {
+      "types": "./dist/compass/index.d.ts",
+      "import": "./dist/compass/index.mjs",
+      "require": "./dist/compass/index.cjs"
+    },
+    "./grid": {
+      "types": "./dist/grid/index.d.ts",
+      "import": "./dist/grid/index.mjs",
+      "require": "./dist/grid/index.cjs"
+    },
+    "./measurements": {
+      "types": "./dist/measurements/index.d.ts",
+      "import": "./dist/measurements/index.mjs",
+      "require": "./dist/measurements/index.cjs"
+    },
+    "./sunlight": {
+      "types": "./dist/sunlight/index.d.ts",
+      "import": "./dist/sunlight/index.mjs",
+      "require": "./dist/sunlight/index.cjs"
+    },
+    "./terrain": {
+      "types": "./dist/terrain/index.d.ts",
+      "import": "./dist/terrain/index.mjs",
+      "require": "./dist/terrain/index.cjs"
+    },
+    "./transform-controls": {
+      "types": "./dist/transform-controls/index.d.ts",
+      "import": "./dist/transform-controls/index.mjs",
+      "require": "./dist/transform-controls/index.cjs"
+    },
+    "./view-helper": {
+      "types": "./dist/view-helper/index.d.ts",
+      "import": "./dist/view-helper/index.mjs",
+      "require": "./dist/view-helper/index.cjs"
+    },
+    "./package.json": "./package.json"
+  },
+  "typesVersions": {
+    "*": {
+      "asset-loader": [
+        "dist/asset-loader/index.d.ts"
+      ],
+      "camera": [
+        "dist/camera/index.d.ts"
+      ],
+      "compass": [
+        "dist/compass/index.d.ts"
+      ],
+      "grid": [
+        "dist/grid/index.d.ts"
+      ],
+      "measurements": [
+        "dist/measurements/index.d.ts"
+      ],
+      "sunlight": [
+        "dist/sunlight/index.d.ts"
+      ],
+      "terrain": [
+        "dist/terrain/index.d.ts"
+      ],
+      "transform-controls": [
+        "dist/transform-controls/index.d.ts"
+      ],
+      "view-helper": [
+        "dist/view-helper/index.d.ts"
+      ],
+      "*": [
+        "dist/index.d.ts"
+      ]
+    }
+  },
   "devDependencies": {
     "@types/three": "^0.180.0",
     "prettier": "^3.6.2",
@@ -12,11 +105,20 @@
     "vite": "^7.1.9"
   },
   "scripts": {
-    "build": "pnpm -r --filter='!threejs-tools-examples' run build",
+    "build": "pnpm run build:package",
+    "build:package": "tsup --config tsup.config.ts",
+    "build:packages": "pnpm -r --filter='!threejs-tools-examples' run build",
     "build:all": "pnpm -r run build",
     "build:examples": "pnpm --filter=threejs-tools-examples run build",
-    "clean": "pnpm -r run clean",
+    "clean": "rm -rf dist && pnpm -r run clean",
     "format": "prettier --write .",
-    "format:check": "prettier --check ."
+    "format:check": "prettier --check .",
+    "prepublishOnly": "pnpm run build"
+  },
+  "peerDependencies": {
+    "three": ">=0.150.0"
+  },
+  "dependencies": {
+    "camera-controls": "^3.1.0"
   }
 }

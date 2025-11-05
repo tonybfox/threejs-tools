@@ -5,19 +5,7 @@ export default defineConfig({
   root: '.',
   resolve: {
     alias: {
-      '@tonybfox/threejs-camera': resolve('../packages/camera/src/index.ts'),
-      '@tonybfox/threejs-grid': resolve('../packages/grid/src/index.ts'),
-      '@tonybfox/threejs-measurements': resolve(
-        '../packages/measurements/src/index.ts'
-      ),
-      '@tonybfox/threejs-asset-loader': resolve(
-        '../packages/asset-loader/src/index.ts'
-      ),
-      '@tonybfox/threejs-terrain': resolve('../packages/terrain/src/index.ts'),
-      '@tonybfox/threejs-sunlight': resolve(
-        '../packages/sunlight/src/index.ts'
-      ),
-      '@tonybfox/threejs-compass': resolve('../packages/compass/src/index.ts'),
+      '@tonybfox/threejs-tools': resolve('../src/index.ts'),
     },
   },
   build: {

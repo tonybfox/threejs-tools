@@ -1,6 +1,6 @@
 # ThreeJS Tools
 
-A collection of utilities and tools for Three.js development, organized as a monorepo with separate packages for different functionalities.
+A collection of utilities and tools for Three.js development, organized as a monorepo with separate packages for different functionalities. The root `@tonybfox/threejs-tools` package now bundles every tool so you can install a single npm package while still importing submodules (for example `@tonybfox/threejs-tools/camera` or `@tonybfox/threejs-tools/terrain`).
 
 ## 📦 Packages
 
@@ -41,15 +41,21 @@ npm install -g pnpm
 
 ## 🔨 Building
 
-### Build all packages
-
-To build all packages in the workspace:
+### Build the publishable bundle
 
 ```bash
 pnpm build
 ```
 
-This builds only the library packages (excludes examples).
+Generates the aggregated `dist/` folder that is published to npm (includes CommonJS, ESM, and type declarations for every tool).
+
+### Build individual workspace packages
+
+```bash
+pnpm build:packages
+```
+
+Builds each package inside `packages/` – useful for local development and examples.
 
 ### Build everything including examples
 
@@ -85,7 +91,7 @@ The project includes interactive examples demonstrating each package's functiona
 
    ```bash
    pnpm install
-   pnpm build
+   pnpm build:packages
    ```
 
 2. **Start the development server:**
@@ -191,6 +197,19 @@ Examples use Vite for development with:
 - Multi-page application setup
 - Three.js optimization
 - Workspace linking for package imports
+
+## 📦 Publishing to npm
+
+Steps to publish the unified `threejs-tools` package:
+
+1. Ensure you are logged in: `pnpm login`
+2. Build the bundle: `pnpm build`
+3. Publish from the repository root: `pnpm publish --access public`
+
+The published package exposes:
+
+- `@tonybfox/threejs-tools` – combined exports (tree-shakeable)
+- `@tonybfox/threejs-tools/<tool>` – direct submodule imports for each tool (`camera`, `terrain`, `measurements`, etc.)
 
 ## 🏗️ Development Workflow
 

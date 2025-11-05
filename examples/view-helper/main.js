@@ -1,5 +1,5 @@
 import * as THREE from 'three'
-import { ViewHelper } from '@tonybfox/threejs-view-helper'
+import { ViewHelper } from '@tonybfox/threejs-tools'
 import {
   SceneSetup,
   ObjectFactory,

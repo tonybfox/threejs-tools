@@ -1,5 +1,5 @@
 import * as THREE from 'three'
-import { DualCameraControls } from '@tonybfox/threejs-camera'
+import { DualCameraControls } from '@tonybfox/threejs-tools'
 import { SceneSetup, ObjectFactory, UIHelpers } from '../shared/utils.js'
 
 // Scene setup using shared utilities
@@ -254,11 +254,6 @@ function updateCameraInfo() {
 let infoUpdateAccumulator = 0
 
 function customAnimation() {
-  if (isOrbiting) {
-    cameraControls.azimuthAngle += orbitSettings.speed * delta
-    cameraControls.polarAngle = orbitSettings.polarAngle
-  }
-
   cameraControls.updateDelta()
 
   // Rotate objects for visual interest
@@ -267,12 +262,6 @@ function customAnimation() {
 
   sphere.rotation.x += 0.01
   cylinder.rotation.y += 0.005
-
-  infoUpdateAccumulator += delta
-  if (infoUpdateAccumulator >= 0.2) {
-    updateCameraInfo()
-    infoUpdateAccumulator = 0
-  }
 }
 
 // Start animation using shared scene setup

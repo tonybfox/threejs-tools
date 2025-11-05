@@ -1,5 +1,5 @@
 import * as THREE from 'three'
-import { DualCameraControls } from '@tonybfox/threejs-camera'
+import { DualCameraControls } from '@tonybfox/threejs-tools'
 
 /**
  * Common Three.js scene utilities for examples
@@ -51,6 +51,7 @@ export class SceneSetup {
 
     this.renderer = new THREE.WebGLRenderer({ antialias })
     this.renderer.setSize(window.innerWidth, window.innerHeight)
+    this.renderer.setPixelRatio(window.devicePixelRatio)
 
     if (enableShadows) {
       this.renderer.shadowMap.enabled = true
