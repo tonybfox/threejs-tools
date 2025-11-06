@@ -1,6 +1,6 @@
 {
   "name": "@tonybfox/threejs-tools",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "A single entry point that bundles all Three.js tools (camera, terrain, measurements, helpers, and more).",
   "private": false,
   "main": "./dist/index.cjs",
@@ -113,12 +113,14 @@
     "clean": "rm -rf dist && pnpm -r run clean",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "prepublishOnly": "pnpm run build"
+    "prepublishOnly": "pnpm run build",
+    "dev": "tsup --watch"
   },
   "peerDependencies": {
-    "three": ">=0.150.0"
+    "three": ">=0.150.0",
+    "camera-controls": ">=3.0.0"
   },
   "dependencies": {
-    "camera-controls": "^3.1.0"
+    "camera-controls": ">=3.0.0"
   }
 }

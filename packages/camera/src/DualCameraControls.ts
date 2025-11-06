@@ -104,11 +104,7 @@ export class DualCameraControls extends CameraControls {
     )
 
     perspectiveCamera.position.copy(
-      toVector3(
-        perspectiveConfig.position,
-        [12, 12, 12],
-        new THREE.Vector3()
-      )
+      toVector3(perspectiveConfig.position, [12, 12, 12], new THREE.Vector3())
     )
 
     if (perspectiveConfig.zoom !== undefined) {
@@ -129,11 +125,7 @@ export class DualCameraControls extends CameraControls {
     )
 
     orthographicCamera.position.copy(
-      toVector3(
-        orthographicConfig.position,
-        [12, 12, 12],
-        new THREE.Vector3()
-      )
+      toVector3(orthographicConfig.position, [12, 12, 12], new THREE.Vector3())
     )
 
     if (orthographicConfig.zoom !== undefined) {

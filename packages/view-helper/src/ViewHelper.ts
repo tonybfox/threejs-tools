@@ -21,6 +21,7 @@ export interface ViewHelperCameraController {
     enableTransition?: boolean
   ): Promise<void> | void
   stop?(): void
+  enabled: boolean
 }
 
 export interface ViewHelperOptions {
@@ -335,11 +336,10 @@ export class ViewHelper extends THREE.EventDispatcher<ViewHelperEventMap> {
     // Clear only depth buffer in the helper area
     renderer.setScissorTest(true)
     renderer.setScissor(x, y, size, size)
-    renderer.clear(false, false, true) // clear depth only
+    renderer.clear(true, true, true)
 
     // Render helper
     renderer.render(this.scene, this.orthoCamera)
-
     // Restore settings
     renderer.setScissorTest(false)
     renderer.autoClear = autoClear
@@ -470,12 +470,12 @@ export class ViewHelper extends THREE.EventDispatcher<ViewHelperEventMap> {
     if (!controls) {
       return
     }
-
+    controls.enabled = false
     controls.stop?.()
     this.animating = true
     this.dispatchEvent({ type: 'animationStart' })
 
-    const applyLookAt = () =>
+    const applyLookAt = () => {
       controls.setLookAt(
         this.targetPosition.x,
         this.targetPosition.y,
@@ -486,6 +486,10 @@ export class ViewHelper extends THREE.EventDispatcher<ViewHelperEventMap> {
         true
       )
 
+      setTimeout(() => {
+        controls.enabled = true
+      }, 100)
+    }
     try {
       void Promise.resolve(applyLookAt())
         .catch((error) => {
