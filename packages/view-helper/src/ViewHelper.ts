@@ -115,9 +115,9 @@ export class ViewHelper extends THREE.EventDispatcher<ViewHelperEventMap> {
       offset: options.offset || { x: 20, y: 20 },
       center: defaultCenter.clone(),
       labels: {
-        x: options.labels?.x || '',
-        y: options.labels?.y || '',
-        z: options.labels?.z || '',
+        x: options.labels?.x || 'x',
+        y: options.labels?.y || 'y',
+        z: options.labels?.z || 'z',
         ...options.labels,
       },
     }
@@ -336,7 +336,7 @@ export class ViewHelper extends THREE.EventDispatcher<ViewHelperEventMap> {
     // Clear only depth buffer in the helper area
     renderer.setScissorTest(true)
     renderer.setScissor(x, y, size, size)
-    renderer.clear(true, true, true)
+    renderer.clearDepth()
 
     // Render helper
     renderer.render(this.scene, this.orthoCamera)
