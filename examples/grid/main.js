@@ -64,6 +64,7 @@ const subdivisionsSlider = UIHelpers.createSlider(
   },
   'Subdivisions'
 )
+subdivisionsSlider.querySelector('input').step = '1'
 controlPanel.appendChild(subdivisionsSlider)
 
 // Color controls
