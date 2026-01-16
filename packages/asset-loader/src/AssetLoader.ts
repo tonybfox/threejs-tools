@@ -133,7 +133,6 @@ export class AssetLoader extends THREE.EventDispatcher<AssetLoaderEventMap> {
       const material = this.placeholder.material as THREE.ShaderMaterial
       if (material.uniforms && material.uniforms.fillProgress) {
         material.uniforms.fillProgress.value = progress
-        console.log('Placeholder fill progress:', progress)
       }
     }
   }
@@ -329,7 +328,6 @@ export class AssetLoader extends THREE.EventDispatcher<AssetLoaderEventMap> {
   ): Promise<THREE.Object3D> {
     return new Promise((resolve, reject) => {
       const onProgress = (event: ProgressEvent) => {
-        console.log('Loading progress event:', event)
         // Handle cases where loaded > total (compressed content mismatch)
         // or total is 0 (unknown content length)
         let percentage = -1 // Default to indeterminate
