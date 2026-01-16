@@ -114,16 +114,14 @@ assetLoader.addEventListener('error', (event) => {
 const controlPanel = UIHelpers.createControlPanel('📦 Asset Loader Controls')
 
 // Status display
-const statusDiv = document.createElement('div')
-statusDiv.style.cssText = `
-  margin: 15px 0;
-  padding: 10px;
-  background: rgba(59, 130, 246, 0.1);
-  border-radius: 6px;
-  font-size: 14px;
-  min-height: 20px;
-`
-statusDiv.textContent = 'Ready to load assets'
+const statusDiv = UIHelpers.createTextDisplay('Ready to load assets', {
+  margin: '15px 0',
+  padding: '10px',
+  background: 'rgba(59, 130, 246, 0.1)',
+  borderRadius: '6px',
+  fontSize: '14px',
+  minHeight: '20px',
+})
 controlPanel.appendChild(statusDiv)
 
 // Progress bar
@@ -193,20 +191,9 @@ function placeAtBottomCenter(object, position) {
 }
 
 // Placeholder demo section
-const placeholderSection = document.createElement('div')
-placeholderSection.style.cssText =
-  'margin: 20px 0; padding-top: 15px; border-top: 1px solid rgba(255,255,255,0.1);'
-const placeholderTitle = document.createElement('div')
-placeholderTitle.textContent = 'Placeholder Demo'
-placeholderTitle.style.cssText =
-  'font-weight: bold; margin-bottom: 10px; color: #3b82f6;'
-placeholderSection.appendChild(placeholderTitle)
-
-// Size controls for placeholder
-const sizeLabel = document.createElement('div')
-sizeLabel.textContent = 'Placeholder Size:'
-sizeLabel.style.cssText = 'font-size: 12px; margin: 10px 0 5px 0;'
-placeholderSection.appendChild(sizeLabel)
+const placeholderSection = UIHelpers.createSection('Placeholder Demo', {
+  marginTop: '20px',
+})
 
 const sizeSlider = UIHelpers.createSlider(
   1,
@@ -215,7 +202,7 @@ const sizeSlider = UIHelpers.createSlider(
   (value) => {
     currentPlaceholderSize = parseFloat(value)
   },
-  'Size'
+  'Placeholder Size'
 )
 placeholderSection.appendChild(sizeSlider)
 
@@ -300,25 +287,22 @@ placeholderSection.appendChild(animateFillBtn)
 controlPanel.appendChild(placeholderSection)
 
 // Model type selection
-const modelSection = document.createElement('div')
-modelSection.style.cssText =
-  'margin: 20px 0; padding-top: 15px; border-top: 1px solid rgba(255,255,255,0.1);'
-const modelTitle = document.createElement('div')
-modelTitle.textContent = 'Model Type Demo'
-modelTitle.style.cssText =
-  'font-weight: bold; margin-bottom: 10px; color: #10b981;'
-modelSection.appendChild(modelTitle)
+const modelSection = UIHelpers.createSection('Model Type Demo', {
+  marginTop: '20px',
+})
 
-const modelTypeInfo = document.createElement('div')
-modelTypeInfo.style.cssText =
-  'font-size: 12px; margin: 10px 0; color: rgba(255,255,255,0.6);'
-modelTypeInfo.innerHTML = `
-  <strong>Supported formats:</strong><br>
+const modelTypeInfo = UIHelpers.createTextDisplay(
+  `<strong>Supported formats:</strong><br>
   • GLTF (.gltf, .glb)<br>
   • FBX (.fbx)<br>
   • OBJ (.obj)<br>
-  • USD (.usd, .usdz)
-`
+  • USD (.usd, .usdz)`,
+  {
+    fontSize: '12px',
+    margin: '10px 0',
+    color: 'rgba(255,255,255,0.6)',
+  }
+)
 modelSection.appendChild(modelTypeInfo)
 
 // Example models array
@@ -338,38 +322,22 @@ const exampleModels = [
 ]
 
 // Create dropdown select
-const selectLabel = document.createElement('div')
-selectLabel.textContent = 'Select Model:'
-selectLabel.style.cssText = 'font-size: 12px; margin: 10px 0 5px 0;'
-modelSection.appendChild(selectLabel)
-
-const modelSelect = document.createElement('select')
-modelSelect.style.cssText = `
-  width: 100%;
-  padding: 8px 12px;
-  margin: 5px 0 15px 0;
-  background: rgba(255, 255, 255, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  border-radius: 6px;
-  color: white;
-  font-size: 14px;
-  cursor: pointer;
-  outline: none;
-`
-exampleModels.forEach((model, index) => {
-  const option = document.createElement('option')
-  option.value = index
-  option.textContent = `${model.name} [${model.type.toUpperCase()}]`
-  option.style.cssText = 'background: #1e293b; color: white;'
-  modelSelect.appendChild(option)
-})
+const modelSelect = UIHelpers.createSelect(
+  exampleModels.map((model, index) => ({
+    value: index.toString(),
+    label: `${model.name} [${model.type.toUpperCase()}]`,
+  })),
+  '0',
+  () => {},
+  'Select Model'
+)
 modelSection.appendChild(modelSelect)
 
 // Load selected model button
 const loadSelectedBtn = UIHelpers.createButton(
   'Load at Random Position',
   async () => {
-    const selectedIndex = parseInt(modelSelect.value)
+    const selectedIndex = parseInt(modelSelect.querySelector('select').value)
     const selectedModel = exampleModels[selectedIndex]
 
     const randomX = (Math.random() - 0.5) * 20
@@ -414,7 +382,7 @@ modelSection.appendChild(loadSelectedBtn)
 const loadCenterBtn = UIHelpers.createButton(
   'Load at Center',
   async () => {
-    const selectedIndex = parseInt(modelSelect.value)
+    const selectedIndex = parseInt(modelSelect.querySelector('select').value)
     const selectedModel = exampleModels[selectedIndex]
 
     updateStatusUI(`Loading ${selectedModel.name}...`)
@@ -454,19 +422,15 @@ modelSection.appendChild(loadCenterBtn)
 controlPanel.appendChild(modelSection)
 
 // Cache controls
-const cacheSection = document.createElement('div')
-cacheSection.style.cssText =
-  'margin: 20px 0; padding-top: 15px; border-top: 1px solid rgba(255,255,255,0.1);'
-const cacheTitle = document.createElement('div')
-cacheTitle.textContent = 'Cache Management'
-cacheTitle.style.cssText =
-  'font-weight: bold; margin-bottom: 10px; color: #f59e0b;'
-cacheSection.appendChild(cacheTitle)
+const cacheSection = UIHelpers.createSection('Cache Management', {
+  marginTop: '20px',
+})
 
-const cacheInfo = document.createElement('div')
-cacheInfo.style.cssText =
-  'font-size: 12px; margin: 10px 0; color: rgba(255,255,255,0.6);'
-cacheInfo.textContent = 'Cache size: 0 items'
+const cacheInfo = UIHelpers.createTextDisplay('Cache size: 0 items', {
+  fontSize: '12px',
+  margin: '10px 0',
+  color: 'rgba(255,255,255,0.6)',
+})
 cacheSection.appendChild(cacheInfo)
 
 const updateCacheInfo = () => {

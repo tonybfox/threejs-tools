@@ -260,6 +260,8 @@ export class UIHelpers {
       zIndex: '100',
       minWidth: '250px',
       width: '250px',
+      maxHeight: 'calc(100vh - 40px)',
+      overflowY: 'auto',
       border: '1px solid rgba(255, 255, 255, 0.1)',
       ...positions[position],
     })
@@ -398,6 +400,173 @@ export class UIHelpers {
     container.appendChild(valueDisplay)
 
     return container
+  }
+
+  static createCheckbox(label, checked, onChange) {
+    const container = document.createElement('div')
+    Object.assign(container.style, {
+      margin: '15px 0',
+      display: 'flex',
+      alignItems: 'center',
+      gap: '8px',
+      cursor: 'pointer',
+    })
+
+    const checkbox = document.createElement('input')
+    checkbox.type = 'checkbox'
+    checkbox.checked = checked
+    Object.assign(checkbox.style, {
+      width: '18px',
+      height: '18px',
+      cursor: 'pointer',
+    })
+
+    const labelEl = document.createElement('label')
+    labelEl.textContent = label
+    Object.assign(labelEl.style, {
+      fontSize: '14px',
+      cursor: 'pointer',
+      userSelect: 'none',
+    })
+
+    checkbox.addEventListener('change', (e) => {
+      if (onChange) onChange(e.target.checked)
+    })
+
+    labelEl.addEventListener('click', () => {
+      checkbox.checked = !checkbox.checked
+      checkbox.dispatchEvent(new Event('change'))
+    })
+
+    container.appendChild(checkbox)
+    container.appendChild(labelEl)
+
+    return container
+  }
+
+  static createSelect(options, value, onChange, label) {
+    const container = document.createElement('div')
+    container.style.margin = '15px 0'
+
+    const labelEl = document.createElement('label')
+    labelEl.textContent = label
+    labelEl.style.display = 'block'
+    labelEl.style.marginBottom = '5px'
+    labelEl.style.fontSize = '14px'
+
+    const select = document.createElement('select')
+    Object.assign(select.style, {
+      width: '100%',
+      padding: '8px',
+      backgroundColor: '#2a2a2a',
+      color: 'white',
+      border: '1px solid #444',
+      borderRadius: '4px',
+      fontSize: '14px',
+      cursor: 'pointer',
+    })
+
+    options.forEach((option) => {
+      const optionEl = document.createElement('option')
+      optionEl.value = option.value
+      optionEl.textContent = option.label
+      if (option.value === value) {
+        optionEl.selected = true
+      }
+      select.appendChild(optionEl)
+    })
+
+    select.addEventListener('change', (e) => {
+      if (onChange) onChange(e.target.value)
+    })
+
+    container.appendChild(labelEl)
+    container.appendChild(select)
+
+    return container
+  }
+
+  static createInput(type, value, onChange, label, options = {}) {
+    const container = document.createElement('div')
+    container.style.margin = '15px 0'
+
+    const labelEl = document.createElement('label')
+    labelEl.textContent = label
+    labelEl.style.display = 'block'
+    labelEl.style.marginBottom = '5px'
+    labelEl.style.fontSize = '14px'
+
+    const input = document.createElement('input')
+    input.type = type
+    input.value = value
+
+    Object.assign(input.style, {
+      width: '100%',
+      padding: '8px',
+      backgroundColor: '#2a2a2a',
+      color: 'white',
+      border: '1px solid #444',
+      borderRadius: '4px',
+      fontSize: '14px',
+    })
+
+    // Apply additional options
+    Object.keys(options).forEach((key) => {
+      input[key] = options[key]
+    })
+
+    input.addEventListener('input', (e) => {
+      if (onChange) onChange(e.target.value)
+    })
+
+    input.addEventListener('change', (e) => {
+      if (onChange) onChange(e.target.value)
+    })
+
+    container.appendChild(labelEl)
+    container.appendChild(input)
+
+    return container
+  }
+
+  static createTextDisplay(content, style = {}) {
+    const div = document.createElement('div')
+    div.innerHTML = content
+
+    Object.assign(div.style, {
+      margin: '10px 0',
+      fontSize: '13px',
+      lineHeight: '1.6',
+      ...style,
+    })
+
+    return div
+  }
+
+  static createSection(title, style = {}) {
+    const section = document.createElement('div')
+
+    Object.assign(section.style, {
+      marginBottom: '20px',
+      padding: '12px',
+      background: 'rgba(15, 20, 30, 0.7)',
+      borderRadius: '8px',
+      border: '1px solid rgba(255, 255, 255, 0.08)',
+      ...style,
+    })
+
+    if (title) {
+      const titleEl = document.createElement('div')
+      titleEl.textContent = title
+      Object.assign(titleEl.style, {
+        fontWeight: 'bold',
+        marginBottom: '8px',
+        fontSize: '14px',
+      })
+      section.appendChild(titleEl)
+    }
+
+    return section
   }
 }
 

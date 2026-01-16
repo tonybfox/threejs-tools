@@ -129,180 +129,217 @@ window.addEventListener('keydown', (event) => {
 })
 
 // UI Controls
-function createObjectButtons() {
-  const container = document.getElementById('objectSelector')
-  objects.forEach((obj) => {
-    const button = document.createElement('div')
-    button.className = 'object-button'
-    if (obj === selectedObject) button.classList.add('selected')
-    button.textContent = obj.name
-    button.onclick = () => {
-      if (selectedObject === obj) {
-        transformControls.detach()
-        selectedObject = null
-        updateObjectSelection(null)
-      } else {
-        selectedObject = obj
-        transformControls.attach(obj)
-        updateObjectSelection(obj)
-      }
+const controlPanel = UIHelpers.createControlPanel(
+  '🎮 Transform Controls',
+  'top-left'
+)
+
+// Object selection buttons
+const objectSection = UIHelpers.createSection('Select Object')
+objectSection.style.marginTop = '0'
+const objectButtonContainer = document.createElement('div')
+Object.assign(objectButtonContainer.style, {
+  display: 'flex',
+  gap: '8px',
+  marginTop: '10px',
+})
+
+objects.forEach((obj) => {
+  const button = UIHelpers.createButton(obj.name, () => {
+    if (selectedObject === obj) {
+      transformControls.detach()
+      selectedObject = null
+      updateObjectSelection(null)
+    } else {
+      selectedObject = obj
+      transformControls.attach(obj)
+      updateObjectSelection(obj)
     }
-    button.dataset.object = obj.name
-    container.appendChild(button)
   })
-}
+  button.dataset.object = obj.name
+  button.style.flex = '1'
+  button.style.fontSize = '12px'
+  button.style.padding = '10px 5px'
+  if (obj === selectedObject) {
+    button.style.background = '#4fc3f7'
+    button.style.border = '2px solid #4fc3f7'
+  }
+  objectButtonContainer.appendChild(button)
+})
+
+objectSection.appendChild(objectButtonContainer)
+controlPanel.appendChild(objectSection)
 
 function updateObjectSelection(object) {
-  if (object === null) {
-    document.querySelectorAll('.object-button').forEach((btn) => {
-      btn.classList.remove('selected')
-    })
-  } else {
-    document.querySelectorAll('.object-button').forEach((btn) => {
-      btn.classList.toggle('selected', btn.dataset.object === object.name)
-    })
+  objectButtonContainer.querySelectorAll('button').forEach((btn) => {
+    if (object && btn.dataset.object === object.name) {
+      btn.style.background = '#4fc3f7'
+      btn.style.border = '2px solid #4fc3f7'
+    } else {
+      btn.style.background = '#3b82f6'
+      btn.style.border = 'none'
+    }
+  })
+}
+
+// Space buttons
+const spaceSection = UIHelpers.createSection('Space')
+const spaceButtonContainer = document.createElement('div')
+Object.assign(spaceButtonContainer.style, {
+  display: 'flex',
+  gap: '8px',
+  marginTop: '10px',
+})
+
+const spaces = ['world', 'local']
+spaces.forEach((space) => {
+  const button = UIHelpers.createButton(
+    space.charAt(0).toUpperCase() + space.slice(1),
+    () => {
+      transformControls.setSpace(space)
+      updateSpaceButtons(space)
+    }
+  )
+  button.dataset.space = space
+  button.style.flex = '1'
+  if (space === 'world') {
+    button.style.background = '#4fc3f7'
   }
-}
+  spaceButtonContainer.appendChild(button)
+})
 
-function updateModeButtons(activeMode) {
-  document.querySelectorAll('#modeButtons .button').forEach((btn) => {
-    btn.classList.toggle('active', btn.dataset.mode === activeMode)
-  })
-}
-
-function createSpaceButtons() {
-  const container = document.getElementById('spaceButtons')
-  const spaces = ['world', 'local']
-
-  spaces.forEach((space) => {
-    const button = UIHelpers.createButton(
-      space.charAt(0).toUpperCase() + space.slice(1),
-      () => {
-        transformControls.setSpace(space)
-        updateSpaceButtons(space)
-      }
-    )
-    button.dataset.space = space
-    if (space === 'world') button.classList.add('active')
-    container.appendChild(button)
-  })
-}
+spaceSection.appendChild(spaceButtonContainer)
+controlPanel.appendChild(spaceSection)
 
 function updateSpaceButtons(activeSpace) {
-  document.querySelectorAll('#spaceButtons .button').forEach((btn) => {
-    btn.classList.toggle('active', btn.dataset.space === activeSpace)
+  spaceButtonContainer.querySelectorAll('button').forEach((btn) => {
+    if (btn.dataset.space === activeSpace) {
+      btn.style.background = '#4fc3f7'
+    } else {
+      btn.style.background = '#3b82f6'
+    }
   })
 }
 
-function createSizeSlider() {
-  const container = document.getElementById('sizeSlider')
-  const slider = UIHelpers.createSlider(
-    0.1,
-    3,
-    0.75,
-    (value) => {
-      transformControls.setSize(parseFloat(value))
-    },
-    'Size'
-  )
-  slider.querySelector('input').step = '0.1'
-  slider.querySelector('input').id = 'sizeSliderInput'
-  container.appendChild(slider)
-}
+// Gizmo size slider
+const sizeSlider = UIHelpers.createSlider(
+  0.1,
+  3,
+  0.75,
+  (value) => {
+    transformControls.setSize(parseFloat(value))
+  },
+  'Gizmo Size'
+)
+sizeSlider.querySelector('input').step = '0.1'
+sizeSlider.querySelector('input').id = 'sizeSliderInput'
+controlPanel.appendChild(sizeSlider)
 
 function updateSizeSlider() {
-  const input = document.getElementById('sizeSliderInput')
+  const input = sizeSlider.querySelector('input')
   if (input) {
     input.value = transformControls.size
-    const valueDisplay = input.parentElement.querySelector(
-      '.slider-label span:last-child'
-    )
+    const valueDisplay = input.nextElementSibling
     if (valueDisplay) {
       valueDisplay.textContent = transformControls.size.toFixed(1)
     }
   }
 }
 
-function createSnappingControls() {
-  const container = document.getElementById('snappingControls')
+// Snapping section
+const snappingSection = UIHelpers.createSection('Snapping')
 
-  // Translation snap
-  const transSnap = UIHelpers.createSlider(
-    0,
-    2,
-    0,
-    (value) => {
-      const snapValue = parseFloat(value)
-      transformControls.setTranslationSnap(snapValue === 0 ? null : snapValue)
-    },
-    'Translation Snap'
+// Translation snap
+const transSnap = UIHelpers.createSlider(
+  0,
+  2,
+  0,
+  (value) => {
+    const snapValue = parseFloat(value)
+    transformControls.setTranslationSnap(snapValue === 0 ? null : snapValue)
+  },
+  'Translation Snap'
+)
+transSnap.querySelector('input').step = '0.1'
+transSnap.style.marginTop = '10px'
+snappingSection.appendChild(transSnap)
+
+// Rotation snap
+const rotSnap = UIHelpers.createSlider(
+  0,
+  45,
+  0,
+  (value) => {
+    const snapValue = parseFloat(value)
+    transformControls.setRotationSnap(
+      snapValue === 0 ? null : THREE.MathUtils.degToRad(snapValue)
+    )
+  },
+  'Rotation Snap (deg)'
+)
+rotSnap.querySelector('input').step = '5'
+snappingSection.appendChild(rotSnap)
+
+// Scale snap
+const scaleSnap = UIHelpers.createSlider(
+  0,
+  1,
+  0,
+  (value) => {
+    const snapValue = parseFloat(value)
+    transformControls.setScaleSnap(snapValue === 0 ? null : snapValue)
+  },
+  'Scale Snap'
+)
+scaleSnap.querySelector('input').step = '0.1'
+snappingSection.appendChild(scaleSnap)
+
+controlPanel.appendChild(snappingSection)
+
+// Visibility section
+const visibilitySection = UIHelpers.createSection('Visibility')
+
+const axisCheckboxes = []
+const axes = ['X', 'Y', 'Z']
+axes.forEach((axis) => {
+  const checkbox = UIHelpers.createCheckbox(
+    `Show ${axis} Axis`,
+    true,
+    (checked) => {
+      transformControls[`show${axis}`] = checked
+    }
   )
-  transSnap.querySelector('input').step = '0.1'
-  container.appendChild(transSnap)
+  checkbox.style.marginTop = '10px'
+  checkbox.style.marginBottom = '5px'
+  axisCheckboxes.push(checkbox.querySelector('input'))
+  visibilitySection.appendChild(checkbox)
+})
 
-  // Rotation snap
-  const rotSnap = UIHelpers.createSlider(
-    0,
-    45,
-    0,
-    (value) => {
-      const snapValue = parseFloat(value)
-      transformControls.setRotationSnap(
-        snapValue === 0 ? null : THREE.MathUtils.degToRad(snapValue)
-      )
-    },
-    'Rotation Snap (deg)'
-  )
-  rotSnap.querySelector('input').step = '5'
-  container.appendChild(rotSnap)
-
-  // Scale snap
-  const scaleSnap = UIHelpers.createSlider(
-    0,
-    1,
-    0,
-    (value) => {
-      const snapValue = parseFloat(value)
-      transformControls.setScaleSnap(snapValue === 0 ? null : snapValue)
-    },
-    'Scale Snap'
-  )
-  scaleSnap.querySelector('input').step = '0.1'
-  container.appendChild(scaleSnap)
-}
-
-function createVisibilityControls() {
-  const container = document.getElementById('visibilityControls')
-
-  const axes = ['X', 'Y', 'Z']
-  axes.forEach((axis) => {
-    const checkbox = document.createElement('div')
-    checkbox.className = 'checkbox-container'
-    checkbox.innerHTML = `
-      <input type="checkbox" id="show${axis}" checked>
-      <label for="show${axis}">Show ${axis} Axis</label>
-    `
-    container.appendChild(checkbox)
-
-    checkbox.querySelector('input').addEventListener('change', (e) => {
-      transformControls[`show${axis}`] = e.target.checked
-    })
-  })
-}
+controlPanel.appendChild(visibilitySection)
 
 function updateVisibilityCheckboxes() {
-  document.getElementById('showX').checked = transformControls.showX
-  document.getElementById('showY').checked = transformControls.showY
-  document.getElementById('showZ').checked = transformControls.showZ
+  axisCheckboxes[0].checked = transformControls.showX
+  axisCheckboxes[1].checked = transformControls.showY
+  axisCheckboxes[2].checked = transformControls.showZ
 }
 
-// Initialize UI
-createObjectButtons()
-
-createSpaceButtons()
-createSizeSlider()
-createSnappingControls()
-createVisibilityControls()
+// Keyboard shortcuts info
+const shortcutsInfo = UIHelpers.createTextDisplay(
+  `<strong>Keyboard Shortcuts:</strong><br>
+  <span style="background: rgba(255,255,255,0.1); padding: 2px 6px; border-radius: 3px; font-family: monospace;">Space</span> Toggle controls<br>
+  <span style="background: rgba(255,255,255,0.1); padding: 2px 6px; border-radius: 3px; font-family: monospace;">W</span> World space<br>
+  <span style="background: rgba(255,255,255,0.1); padding: 2px 6px; border-radius: 3px; font-family: monospace;">L</span> Local space<br>
+  <span style="background: rgba(255,255,255,0.1); padding: 2px 6px; border-radius: 3px; font-family: monospace;">+/-</span> Increase/Decrease size<br>
+  <span style="background: rgba(255,255,255,0.1); padding: 2px 6px; border-radius: 3px; font-family: monospace;">X/Y/Z</span> Hide/Show axes`,
+  {
+    fontSize: '11px',
+    color: '#999',
+    marginTop: '15px',
+    paddingTop: '15px',
+    borderTop: '1px solid rgba(255, 255, 255, 0.1)',
+  }
+)
+controlPanel.appendChild(shortcutsInfo)
 
 // Animation loop
 function animate() {

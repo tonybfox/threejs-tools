@@ -32,9 +32,6 @@ let compass = new CompassOverlay(camera, {
   },
 })
 
-// Start the compass
-compass.start()
-
 // Predefined locations
 const locations = {
   home: {
@@ -104,114 +101,57 @@ const terrainTool = new TerrainTool(scene, {
 const controlPanel = UIHelpers.createControlPanel('Terrain Controls')
 
 // Location selector
-const locationLabel = document.createElement('label')
-locationLabel.textContent = 'Location:'
-locationLabel.style.display = 'block'
-locationLabel.style.marginBottom = '5px'
-locationLabel.style.fontSize = '14px'
-
-const locationSelect = document.createElement('select')
-locationSelect.style.width = '100%'
-locationSelect.style.padding = '8px'
-locationSelect.style.marginBottom = '15px'
-locationSelect.style.backgroundColor = '#2a2a2a'
-locationSelect.style.color = 'white'
-locationSelect.style.border = '1px solid #444'
-locationSelect.style.borderRadius = '4px'
-locationSelect.style.fontSize = '14px'
-
-Object.entries(locations).forEach(([key, loc]) => {
-  const option = document.createElement('option')
-  option.value = key
-  option.textContent = loc.name
-  locationSelect.appendChild(option)
-})
-
-locationSelect.addEventListener('change', (e) => {
-  currentLocation = locations[e.target.value]
-})
-
-controlPanel.appendChild(locationLabel)
+const locationSelect = UIHelpers.createSelect(
+  Object.entries(locations).map(([key, loc]) => ({
+    value: key,
+    label: loc.name,
+  })),
+  'home',
+  (value) => {
+    currentLocation = locations[value]
+    latInput.querySelector('input').value = currentLocation.latitude
+    lonInput.querySelector('input').value = currentLocation.longitude
+  },
+  'Location'
+)
 controlPanel.appendChild(locationSelect)
 
 // Custom coordinates
-const customCoordsLabel = document.createElement('div')
-customCoordsLabel.textContent = 'Custom Coordinates:'
-customCoordsLabel.style.fontSize = '14px'
-customCoordsLabel.style.marginTop = '15px'
-customCoordsLabel.style.marginBottom = '5px'
-controlPanel.appendChild(customCoordsLabel)
+const customCoordsSection = UIHelpers.createSection('Custom Coordinates')
 
 // Latitude input
-const latLabel = document.createElement('label')
-latLabel.textContent = 'Latitude:'
-latLabel.style.display = 'block'
-latLabel.style.fontSize = '12px'
-latLabel.style.marginBottom = '3px'
-
-const latInput = document.createElement('input')
-latInput.type = 'number'
-latInput.step = '0.0001'
-latInput.value = currentLocation.latitude
-latInput.style.width = '100%'
-latInput.style.padding = '6px'
-latInput.style.marginBottom = '10px'
-latInput.style.backgroundColor = '#2a2a2a'
-latInput.style.color = 'white'
-latInput.style.border = '1px solid #444'
-latInput.style.borderRadius = '4px'
-
-controlPanel.appendChild(latLabel)
-controlPanel.appendChild(latInput)
+const latInput = UIHelpers.createInput(
+  'number',
+  currentLocation.latitude,
+  (value) => {},
+  'Latitude',
+  { step: '0.0001' }
+)
+customCoordsSection.appendChild(latInput)
 
 // Longitude input
-const lonLabel = document.createElement('label')
-lonLabel.textContent = 'Longitude:'
-lonLabel.style.display = 'block'
-lonLabel.style.fontSize = '12px'
-lonLabel.style.marginBottom = '3px'
+const lonInput = UIHelpers.createInput(
+  'number',
+  currentLocation.longitude,
+  (value) => {},
+  'Longitude',
+  { step: '0.0001' }
+)
+customCoordsSection.appendChild(lonInput)
 
-const lonInput = document.createElement('input')
-lonInput.type = 'number'
-lonInput.step = '0.0001'
-lonInput.value = currentLocation.longitude
-lonInput.style.width = '100%'
-lonInput.style.padding = '6px'
-lonInput.style.marginBottom = '15px'
-lonInput.style.backgroundColor = '#2a2a2a'
-lonInput.style.color = 'white'
-lonInput.style.border = '1px solid #444'
-lonInput.style.borderRadius = '4px'
-
-controlPanel.appendChild(lonLabel)
-controlPanel.appendChild(lonInput)
-
-// Update lat/lon inputs when location changes
-locationSelect.addEventListener('change', (e) => {
-  const loc = locations[e.target.value]
-  latInput.value = loc.latitude
-  lonInput.value = loc.longitude
-})
+controlPanel.appendChild(customCoordsSection)
 
 // Size controls
-const sizeLabel = document.createElement('div')
-sizeLabel.textContent = 'Terrain Size (meters):'
-sizeLabel.style.fontSize = '14px'
-sizeLabel.style.marginTop = '15px'
-sizeLabel.style.marginBottom = '5px'
-controlPanel.appendChild(sizeLabel)
+const sizeSection = UIHelpers.createSection('Terrain Size (meters)')
 
 // Width input
-const widthLabel = document.createElement('label')
-widthLabel.textContent = 'Width:'
-widthLabel.style.display = 'block'
-widthLabel.style.fontSize = '12px'
-widthLabel.style.marginBottom = '3px'
-
-const widthInput = document.createElement('input')
-widthInput.type = 'number'
-widthInput.step = '100'
-widthInput.value = currentWidth
+const widthInput = UIHelpers.createInput(
+  'number',
+  currentWidth,
+  (value) => {},
+  'Width',
+  { step: '100' }
+)
 widthInput.style.width = '100%'
 widthInput.style.padding = '6px'
 widthInput.style.marginBottom = '10px'

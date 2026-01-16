@@ -63,6 +63,10 @@ cameraControls.smoothTime = 0.5
 camera = cameraControls.activeCamera
 updateCamera(camera)
 
+cameraControls.addEventListener('update', (event) => {
+  updateCameraInfo()
+})
+
 cameraControls.addEventListener('modechange', (event) => {
   camera = event.camera
   updateCamera(event.camera)
@@ -206,16 +210,16 @@ controlPanel.appendChild(clearExternalBtn)
 
 // Create camera info panel
 const cameraInfoPanel = UIHelpers.createControlPanel(
-  '📊 Camera Info',
-  'bottom-left'
+  'Camera Info',
+  'bottom-right'
 )
 cameraInfoPanel.style.fontFamily = 'monospace'
 cameraInfoPanel.style.fontSize = '12px'
 
-const cameraPositionDiv = document.createElement('div')
-const cameraRotationDiv = document.createElement('div')
-const cameraTypeDiv = document.createElement('div')
-const externalCameraDiv = document.createElement('div')
+const cameraPositionDiv = UIHelpers.createTextDisplay('')
+const cameraRotationDiv = UIHelpers.createTextDisplay('')
+const cameraTypeDiv = UIHelpers.createTextDisplay('')
+const externalCameraDiv = UIHelpers.createTextDisplay('')
 
 cameraInfoPanel.appendChild(cameraPositionDiv)
 cameraInfoPanel.appendChild(cameraRotationDiv)

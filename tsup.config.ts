@@ -16,7 +16,7 @@ const entry = {
 export default defineConfig({
   entry,
   target: 'es2020',
-  sourcemap: true,
+  sourcemap: false,
   clean: true,
   dts: true,
   format: ['esm', 'cjs'],

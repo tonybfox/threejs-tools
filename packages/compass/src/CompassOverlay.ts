@@ -5,6 +5,7 @@ export interface CompassOverlayOptions {
   size?: number
   position?: 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right'
   offset?: { x: number; y: number }
+  northDirection?: THREE.Vector3
   colors?: {
     background: string
     border: string
@@ -42,6 +43,7 @@ export class CompassOverlay extends THREE.EventDispatcher<CompassOverlayEventMap
       size: options.size || 100,
       position: options.position || 'bottom-right',
       offset: options.offset || { x: 20, y: 20 },
+      northDirection: options.northDirection?.clone().normalize() || new THREE.Vector3(0, 0, -1),
       colors: {
         background: options.colors?.background || '#1a1a1a',
         border: options.colors?.border || '#333333',
@@ -55,6 +57,7 @@ export class CompassOverlay extends THREE.EventDispatcher<CompassOverlayEventMap
     this.container = this.options.container
     this.createCompassElement()
     this.setupStyles()
+    this.start()
   }
 
   private createCompassElement(): void {
@@ -315,12 +318,20 @@ export class CompassOverlay extends THREE.EventDispatcher<CompassOverlayEventMap
     forward.y = 0
     forward.normalize()
 
-    // Calculate angle from world -Z axis (north)
-    // World Z- is "north", X- is "east" (flipped X axis)
+    // Get the configured north direction and project to XZ plane
+    const north = this.options.northDirection.clone()
+    north.y = 0
+    north.normalize()
+
+    // Calculate angle from configured north direction
     const targetAngle = Math.atan2(-forward.x, -forward.z) * (180 / Math.PI)
+    const northAngle = Math.atan2(-north.x, -north.z) * (180 / Math.PI)
+    
+    // Adjust target angle relative to the configured north
+    const adjustedAngle = targetAngle - northAngle
 
     // Calculate the shortest rotation path to avoid spinning around
-    let angleDiff = targetAngle - this.currentRotation
+    let angleDiff = adjustedAngle - this.currentRotation
 
     // Normalize the angle difference to be between -180 and 180
     while (angleDiff > 180) angleDiff -= 360
@@ -340,6 +351,10 @@ export class CompassOverlay extends THREE.EventDispatcher<CompassOverlayEventMap
 
   public setCamera(camera: THREE.Camera): void {
     this.camera = camera
+  }
+
+  public getNorthDirection(): THREE.Vector3 {
+    return this.options.northDirection.clone()
   }
 
   public setSize(size: number): void {
@@ -386,23 +401,24 @@ export class CompassOverlay extends THREE.EventDispatcher<CompassOverlayEventMap
   }
 
   /**
-   * Helper method to reset camera to look north (world Z- direction)
+   * Helper method to reset camera to look north
    * This is a convenience method that can be called when handling the 'resetToNorth' event
    */
   public static resetCameraToNorth(
     camera: THREE.Camera,
-    smooth: boolean = true
+    smooth: boolean = true,
+    northDirection: THREE.Vector3 = new THREE.Vector3(0, 0, -1)
   ): void {
     if (smooth) {
       // Create a smooth rotation animation to north
       const startQuaternion = camera.quaternion.clone()
       const targetQuaternion = new THREE.Quaternion()
 
-      // Set target rotation to look at north (Z-)
+      // Set target rotation to look at configured north direction
       const targetMatrix = new THREE.Matrix4()
       targetMatrix.lookAt(
         camera.position,
-        camera.position.clone().add(new THREE.Vector3(0, 0, -1)),
+        camera.position.clone().add(northDirection),
         new THREE.Vector3(0, 1, 0)
       )
       targetQuaternion.setFromRotationMatrix(targetMatrix)
@@ -431,7 +447,7 @@ export class CompassOverlay extends THREE.EventDispatcher<CompassOverlayEventMap
       animate()
     } else {
       // Instant rotation to north
-      camera.lookAt(camera.position.clone().add(new THREE.Vector3(0, 0, -1)))
+      camera.lookAt(camera.position.clone().add(northDirection))
     }
   }
 

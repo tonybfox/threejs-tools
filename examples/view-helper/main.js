@@ -78,114 +78,149 @@ function init() {
 }
 
 function setupControls() {
+  const controlPanel = UIHelpers.createControlPanel(
+    '🎛️ View Helper Controls',
+    'top-left'
+  )
+
   // Position control
-  const positionSelect = document.getElementById('position')
-  positionSelect.addEventListener('change', (e) => {
-    // Recreate view helper with new position
-    viewHelper.dispose()
-    viewHelper = new ViewHelper(camera, renderer.domElement, {
-      size: parseInt(document.getElementById('size').value),
-      position: e.target.value,
-      offset: {
-        x: parseInt(document.getElementById('offsetX').value),
-        y: parseInt(document.getElementById('offsetY').value),
-      },
-      center: new THREE.Vector3(0, 0, 0),
-      labels: { x: 'X', y: 'Y', z: 'Z' },
-      colors: {
-        x: '#ff4466',
-        y: '#88ff44',
-        z: '#4488ff',
-        background: '#000000',
-      },
-      controls,
-    })
-  })
+  const positionSelect = UIHelpers.createSelect(
+    [
+      { value: 'bottom-right', label: 'Bottom Right' },
+      { value: 'bottom-left', label: 'Bottom Left' },
+      { value: 'top-right', label: 'Top Right' },
+      { value: 'top-left', label: 'Top Left' },
+    ],
+    'bottom-right',
+    (value) => {
+      // Recreate view helper with new position
+      viewHelper.dispose()
+      viewHelper = new ViewHelper(camera, renderer.domElement, {
+        size: parseInt(sizeSlider.querySelector('input').value),
+        position: value,
+        offset: {
+          x: parseInt(offsetXSlider.querySelector('input').value),
+          y: parseInt(offsetYSlider.querySelector('input').value),
+        },
+        center: new THREE.Vector3(0, 0, 0),
+        labels: { x: 'X', y: 'Y', z: 'Z' },
+        colors: {
+          x: '#ff4466',
+          y: '#88ff44',
+          z: '#4488ff',
+          background: '#000000',
+        },
+        controls,
+      })
+    },
+    'Position'
+  )
+  controlPanel.appendChild(positionSelect)
 
   // Size control
-  const sizeSlider = document.getElementById('size')
-  const sizeValue = document.getElementById('sizeValue')
-  sizeSlider.addEventListener('input', (e) => {
-    sizeValue.textContent = e.target.value
-    // Recreate view helper with new size
-    viewHelper.dispose()
-    viewHelper = new ViewHelper(camera, renderer.domElement, {
-      size: parseInt(e.target.value),
-      position: document.getElementById('position').value,
-      offset: {
-        x: parseInt(document.getElementById('offsetX').value),
-        y: parseInt(document.getElementById('offsetY').value),
-      },
-      center: new THREE.Vector3(0, 0, 0),
-      labels: { x: 'X', y: 'Y', z: 'Z' },
-      colors: {
-        x: '#ff4466',
-        y: '#88ff44',
-        z: '#4488ff',
-        background: '#000000',
-      },
-      controls,
-    })
-  })
+  const sizeSlider = UIHelpers.createSlider(
+    64,
+    256,
+    128,
+    (value) => {
+      // Recreate view helper with new size
+      viewHelper.dispose()
+      viewHelper = new ViewHelper(camera, renderer.domElement, {
+        size: parseInt(value),
+        position: positionSelect.querySelector('select').value,
+        offset: {
+          x: parseInt(offsetXSlider.querySelector('input').value),
+          y: parseInt(offsetYSlider.querySelector('input').value),
+        },
+        center: new THREE.Vector3(0, 0, 0),
+        labels: { x: 'X', y: 'Y', z: 'Z' },
+        colors: {
+          x: '#ff4466',
+          y: '#88ff44',
+          z: '#4488ff',
+          background: '#000000',
+        },
+        controls,
+      })
+    },
+    'Size'
+  )
+  sizeSlider.querySelector('input').step = '1'
+  controlPanel.appendChild(sizeSlider)
 
-  // Offset controls
-  const offsetXSlider = document.getElementById('offsetX')
-  const offsetXValue = document.getElementById('offsetXValue')
-  offsetXSlider.addEventListener('input', (e) => {
-    offsetXValue.textContent = e.target.value
-    // Recreate view helper with new offset
-    viewHelper.dispose()
-    viewHelper = new ViewHelper(camera, renderer.domElement, {
-      size: parseInt(document.getElementById('size').value),
-      position: document.getElementById('position').value,
-      offset: {
-        x: parseInt(e.target.value),
-        y: parseInt(document.getElementById('offsetY').value),
-      },
-      center: new THREE.Vector3(0, 0, 0),
-      labels: { x: 'X', y: 'Y', z: 'Z' },
-      colors: {
-        x: '#ff4466',
-        y: '#88ff44',
-        z: '#4488ff',
-        background: '#000000',
-      },
-      controls,
-    })
-  })
+  // Offset X control
+  const offsetXSlider = UIHelpers.createSlider(
+    0,
+    100,
+    20,
+    (value) => {
+      // Recreate view helper with new offset
+      viewHelper.dispose()
+      viewHelper = new ViewHelper(camera, renderer.domElement, {
+        size: parseInt(sizeSlider.querySelector('input').value),
+        position: positionSelect.querySelector('select').value,
+        offset: {
+          x: parseInt(value),
+          y: parseInt(offsetYSlider.querySelector('input').value),
+        },
+        center: new THREE.Vector3(0, 0, 0),
+        labels: { x: 'X', y: 'Y', z: 'Z' },
+        colors: {
+          x: '#ff4466',
+          y: '#88ff44',
+          z: '#4488ff',
+          background: '#000000',
+        },
+        controls,
+      })
+    },
+    'Offset X'
+  )
+  offsetXSlider.querySelector('input').step = '1'
+  controlPanel.appendChild(offsetXSlider)
 
-  const offsetYSlider = document.getElementById('offsetY')
-  const offsetYValue = document.getElementById('offsetYValue')
-  offsetYSlider.addEventListener('input', (e) => {
-    offsetYValue.textContent = e.target.value
-    // Recreate view helper with new offset
-    viewHelper.dispose()
-    viewHelper = new ViewHelper(camera, renderer.domElement, {
-      size: parseInt(document.getElementById('size').value),
-      position: document.getElementById('position').value,
-      offset: {
-        x: parseInt(document.getElementById('offsetX').value),
-        y: parseInt(e.target.value),
-      },
-      center: new THREE.Vector3(0, 0, 0),
-      labels: { x: 'X', y: 'Y', z: 'Z' },
-      colors: {
-        x: '#ff4466',
-        y: '#88ff44',
-        z: '#4488ff',
-        background: '#000000',
-      },
-      controls,
-    })
-  })
+  // Offset Y control
+  const offsetYSlider = UIHelpers.createSlider(
+    0,
+    100,
+    20,
+    (value) => {
+      // Recreate view helper with new offset
+      viewHelper.dispose()
+      viewHelper = new ViewHelper(camera, renderer.domElement, {
+        size: parseInt(sizeSlider.querySelector('input').value),
+        position: positionSelect.querySelector('select').value,
+        offset: {
+          x: parseInt(offsetXSlider.querySelector('input').value),
+          y: parseInt(value),
+        },
+        center: new THREE.Vector3(0, 0, 0),
+        labels: { x: 'X', y: 'Y', z: 'Z' },
+        colors: {
+          x: '#ff4466',
+          y: '#88ff44',
+          z: '#4488ff',
+          background: '#000000',
+        },
+        controls,
+      })
+    },
+    'Offset Y'
+  )
+  offsetYSlider.querySelector('input').step = '1'
+  controlPanel.appendChild(offsetYSlider)
 
   // Reset camera button
-  const resetButton = document.getElementById('resetCamera')
-  resetButton.addEventListener('click', () => {
-    controls.setPosition(5, 5, 5, true)
-    controls.setTarget(0, 0, 0, true)
-    controls.update(0)
-  })
+  const resetButton = UIHelpers.createButton(
+    'Reset Camera',
+    () => {
+      controls.setPosition(5, 5, 5, true)
+      controls.setTarget(0, 0, 0, true)
+      controls.update(0)
+    },
+    'success'
+  )
+  controlPanel.appendChild(resetButton)
 }
 
 function animate() {

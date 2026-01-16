@@ -186,27 +186,17 @@ const importButton = UIHelpers.createButton(
   'secondary'
 )
 
-// Create snap enabled checkbox manually since UIHelpers doesn't have it
-const snapContainer = document.createElement('div')
-snapContainer.style.margin = '15px 0'
-
-const snapLabel = document.createElement('label')
-snapLabel.style.display = 'flex'
-snapLabel.style.alignItems = 'center'
-snapLabel.style.fontSize = '14px'
-snapLabel.style.cursor = 'pointer'
-
-const snapEnabledCheckbox = document.createElement('input')
-snapEnabledCheckbox.type = 'checkbox'
-snapEnabledCheckbox.checked = true
-snapEnabledCheckbox.style.marginRight = '8px'
-
-const snapLabelText = document.createElement('span')
-snapLabelText.textContent = 'Snap to Vertices'
-
-snapLabel.appendChild(snapEnabledCheckbox)
-snapLabel.appendChild(snapLabelText)
-snapContainer.appendChild(snapLabel)
+// Create snap enabled checkbox using UIHelpers
+const snapContainer = UIHelpers.createCheckbox(
+  'Snap to Vertices',
+  true,
+  (checked) => {
+    measurementSettings.snapEnabled = checked
+    measurementTool.setDefaultMeasurementOptions({
+      snapEnabled: checked,
+    })
+  }
+)
 
 // Create snap distance slider using UIHelpers
 const snapDistanceSlider = UIHelpers.createSlider(
@@ -222,27 +212,19 @@ const snapDistanceSlider = UIHelpers.createSlider(
   'Snap Distance'
 )
 
-// Create dynamic measurement toggle checkbox
-const dynamicContainer = document.createElement('div')
-dynamicContainer.style.margin = '15px 0'
-
-const dynamicLabel = document.createElement('label')
-dynamicLabel.style.display = 'flex'
-dynamicLabel.style.alignItems = 'center'
-dynamicLabel.style.fontSize = '14px'
-dynamicLabel.style.cursor = 'pointer'
-
-const dynamicMeasurementCheckbox = document.createElement('input')
-dynamicMeasurementCheckbox.type = 'checkbox'
-dynamicMeasurementCheckbox.checked = false
-dynamicMeasurementCheckbox.style.marginRight = '8px'
-
-const dynamicLabelText = document.createElement('span')
-dynamicLabelText.textContent = 'Create Dynamic Measurements'
-
-dynamicLabel.appendChild(dynamicMeasurementCheckbox)
-dynamicLabel.appendChild(dynamicLabelText)
-dynamicContainer.appendChild(dynamicLabel)
+// Create dynamic measurement toggle checkbox using UIHelpers
+const dynamicContainer = UIHelpers.createCheckbox(
+  'Create Dynamic Measurements',
+  false,
+  (checked) => {
+    isDynamicMode = checked
+    measurementSettings.isDynamic = checked
+    measurementTool.setDefaultMeasurementOptions({
+      isDynamic: checked,
+    })
+    updateMeasurementTypeDisplay()
+  }
+)
 
 // Track dynamic measurement mode
 let isDynamicMode = false
@@ -268,28 +250,32 @@ const infoPanel = UIHelpers.createControlPanel(
   'bottom-left'
 )
 
-const measurementCountDiv = document.createElement('div')
-measurementCountDiv.innerHTML =
+const measurementCountDiv = UIHelpers.createTextDisplay(
   'Measurements: <span id="measurementCount">0</span>'
+)
 
-const currentModeDiv = document.createElement('div')
-currentModeDiv.innerHTML = 'Mode: <span id="currentMode">Viewing</span>'
+const currentModeDiv = UIHelpers.createTextDisplay(
+  'Mode: <span id="currentMode">Viewing</span>'
+)
 
-const measurementTypeDiv = document.createElement('div')
-measurementTypeDiv.innerHTML = 'Type: <span id="measurementType">Static</span>'
+const measurementTypeDiv = UIHelpers.createTextDisplay(
+  'Type: <span id="measurementType">Static</span>'
+)
 
-const lastMeasurementDiv = document.createElement('div')
+const lastMeasurementDiv = UIHelpers.createTextDisplay('')
 lastMeasurementDiv.id = 'lastMeasurement'
 
-const helpDiv = document.createElement('div')
-helpDiv.style.marginTop = '10px'
-helpDiv.style.fontSize = '11px'
-helpDiv.style.color = '#ccc'
-helpDiv.innerHTML =
+const helpDiv = UIHelpers.createTextDisplay(
   'Click on objects to measure distances.<br />' +
-  'Toggle Dynamic mode to track moving objects.<br />' +
-  'ESC to cancel current measurement.<br />' +
-  '<strong>Double-click on a label to edit it!</strong>'
+    'Toggle Dynamic mode to track moving objects.<br />' +
+    'ESC to cancel current measurement.<br />' +
+    '<strong>Double-click on a label to edit it!</strong>',
+  {
+    marginTop: '10px',
+    fontSize: '11px',
+    color: '#ccc',
+  }
+)
 
 infoPanel.appendChild(measurementCountDiv)
 infoPanel.appendChild(currentModeDiv)
@@ -372,25 +358,15 @@ fileInput.addEventListener('change', (event) => {
   reader.readAsText(file)
 })
 
-snapEnabledCheckbox.addEventListener('change', (e) => {
-  measurementSettings.snapEnabled = e.target.checked
-  measurementSettings.snapMode = measurementSettings.snapEnabled
-    ? SnapMode.VERTEX
-    : SnapMode.DISABLED
-  measurementTool.setDefaultMeasurementOptions({
-    snapEnabled: measurementSettings.snapEnabled,
-    snapMode: measurementSettings.snapMode,
-  })
-})
-
-dynamicMeasurementCheckbox.addEventListener('change', (e) => {
-  isDynamicMode = e.target.checked
-  measurementSettings.isDynamic = isDynamicMode
-  measurementTool.setDynamicMode(isDynamicMode)
-  measurementTypeSpan.textContent = isDynamicMode ? 'Dynamic' : 'Static'
-  measurementTypeSpan.style.color = isDynamicMode ? '#00ff00' : '#ffffff'
+// Helper function to update measurement type display
+function updateMeasurementTypeDisplay() {
+  const measurementTypeSpan = document.getElementById('measurementType')
+  if (measurementTypeSpan) {
+    measurementTypeSpan.textContent = isDynamicMode ? 'Dynamic' : 'Static'
+    measurementTypeSpan.style.color = isDynamicMode ? '#00ff00' : '#ffffff'
+  }
   console.log(`Dynamic measurement mode: ${isDynamicMode ? 'ON' : 'OFF'}`)
-})
+}
 
 // Add some programmatic measurements as examples using the unified addMeasurement method
 

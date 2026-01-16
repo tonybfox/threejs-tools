@@ -70,9 +70,6 @@ compass = new CompassOverlay(camera, {
   },
 })
 
-// Start the compass
-compass.start()
-
 const ground = sceneSetup.addGround(220, 0x1c242f)
 ground.material.color.setHex(0x1c242f)
 

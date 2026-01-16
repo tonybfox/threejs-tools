@@ -120,10 +120,10 @@ const fogFarSlider = UIHelpers.createSlider(
 fogFarSlider.querySelector('input').step = '1'
 controlPanel.appendChild(fogFarSlider)
 
-const infoText = document.createElement('div')
-infoText.innerHTML =
-  '<small style="color: #888">Real-time grid & fog updates</small>'
-infoText.style.marginTop = '10px'
+const infoText = UIHelpers.createTextDisplay(
+  '<small style="color: #888">Real-time grid & fog updates</small>',
+  { marginTop: '10px' }
+)
 controlPanel.appendChild(infoText)
 
 // Custom animation function

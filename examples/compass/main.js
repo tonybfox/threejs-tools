@@ -86,14 +86,15 @@ westCube.castShadow = true
 scene.add(westCube)
 
 // Add text labels (using sprites)
-addTextLabel('N (Z-)', new THREE.Vector3(0, 3, -10), 0xff0000)
-addTextLabel('E (X-)', new THREE.Vector3(-10, 3, 0), 0x00ff00)
-addTextLabel('S (Z+)', new THREE.Vector3(0, 3, 10), 0x0000ff)
-addTextLabel('W (X+)', new THREE.Vector3(10, 3, 0), 0xffff00)
+addTextLabel('N (Z-)', new THREE.Vector3(0, 3, -10), 0xffffff)
+addTextLabel('E (X+)', new THREE.Vector3(10, 3, 0), 0xffffff)
+addTextLabel('S (Z+)', new THREE.Vector3(0, 3, 10), 0xffffff)
+addTextLabel('W (X-)', new THREE.Vector3(-10, 3, 0), 0xffffff)
 
 // Create compass overlay
 compass = new CompassOverlay(camera, {
   size: 80,
+  northDirection: new THREE.Vector3(0.38, 0, -0.92),
   position: 'bottom-right',
   offset: { x: 20, y: 20 },
   colors: {
@@ -105,16 +106,13 @@ compass = new CompassOverlay(camera, {
   },
 })
 
-// Start the compass
-compass.start()
-
 // Add event listener for compass double-click to reset camera to north
 compass.addEventListener('resetToNorth', () => {
-  // controls
   const cameraPos = camera.position.clone()
+  const northDir = compass.getNorthDirection()
 
-  // force look direction to world -Z (0, 0, -1) from current position
-  const lookAt = new THREE.Vector3(cameraPos.x, cameraPos.y, cameraPos.z - 1)
+  // Set look direction based on the compass's configured north direction
+  const lookAt = cameraPos.clone().add(northDir)
 
   if (controls) {
     void controls.setLookAt(

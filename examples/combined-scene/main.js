@@ -59,9 +59,6 @@ const compass = new CompassOverlay(camera, {
   },
 })
 
-// Start the compass
-compass.start()
-
 // Mapbox token storage
 const MAPBOX_TOKEN_STORAGE_KEY = 'threejs-tools-mapbox-token'
 let mapboxAccessToken = ''
@@ -151,28 +148,6 @@ const formatTimeLabel = (hours) => {
   return `${displayHours.toString().padStart(2, '0')}:${displayMinutes
     .toString()
     .padStart(2, '0')}`
-}
-
-const formatDayOfYearLabel = (day, year) => {
-  const safeDay = Math.max(1, Math.round(day))
-  const date = new Date(Date.UTC(year, 0, safeDay))
-  return date.toLocaleDateString(undefined, {
-    month: 'long',
-    day: 'numeric',
-    year: 'numeric',
-  })
-}
-
-const formatUTCOffset = (offsetMinutes) => {
-  const hours = offsetMinutes / 60
-  const sign = hours >= 0 ? '+' : '-'
-  const absHours = Math.floor(Math.abs(hours))
-  const absMinutes = Math.abs(offsetMinutes) % 60
-  if (absMinutes === 0) {
-    return `UTC${sign}${absHours}`
-  }
-  const minutesLabel = absMinutes.toString().padStart(2, '0')
-  return `UTC${sign}${absHours}:${minutesLabel}`
 }
 
 const radToDeg = (radians) => (radians * 180) / Math.PI

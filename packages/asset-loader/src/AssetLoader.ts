@@ -190,7 +190,7 @@ export class AssetLoader extends THREE.EventDispatcher<AssetLoaderEventMap> {
     const center = boundingBox.getCenter(new THREE.Vector3())
     const bottomCenter = new THREE.Vector3(
       center.x,
-      boundingBox.min.y + 0.01,
+      boundingBox.min.y - 0.01,
       center.z
     )
 

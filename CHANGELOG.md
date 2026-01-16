@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.4
+
+- Added northDirection to the CompassOverlay
+
 ## 1.0.3
 
 - Set subdivisions slider input step to 1 in grid example.
