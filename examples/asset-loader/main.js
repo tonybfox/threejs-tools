@@ -259,12 +259,28 @@ const animateFillBtn = UIHelpers.createButton(
       return
     }
 
-    animateFillBtn.textContent = 'Stop Animation'
     let progress = 0
 
     const animate = () => {
       progress += 0.005
-      if (progress > 1) progress = 0
+
+      if (progress >= 1) {
+        progress = 1
+        if (currentPlaceholder && currentPlaceholder instanceof THREE.Mesh) {
+          const material = currentPlaceholder.material
+          if (material.uniforms && material.uniforms.fillProgress) {
+            material.uniforms.fillProgress.value = progress
+          }
+        }
+        cancelAnimationFrame(fillAnimation)
+        fillAnimation = null
+        animateFillBtn.textContent = 'Animate Fill'
+
+        if (currentPlaceholder) {
+          scene.remove(currentPlaceholder)
+        }
+        return
+      }
 
       if (currentPlaceholder && currentPlaceholder instanceof THREE.Mesh) {
         const material = currentPlaceholder.material
@@ -312,12 +328,6 @@ const exampleModels = [
     type: 'gltf',
     url: 'https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Models/refs/heads/main/2.0/Duck/glTF/Duck.gltf',
     size: [1, 1, 1],
-  },
-  {
-    name: 'visualconfig (fbx - Large)',
-    type: 'fbx',
-    url: 'https://visualconfig-dev.s3.eu-west-2.amazonaws.com/three-d-files/97e39447-484a-49d9-9505-b2e6aca57832/d98ff541-9d57-4587-81d1-21c336a8ab04.fbx?response-content-disposition=inline&X-Amz-Content-Sha256=UNSIGNED-PAYLOAD&X-Amz-Security-Token=IQoJb3JpZ2luX2VjEHkaCWV1LXdlc3QtMiJIMEYCIQC1sYHjGZsKN8XVvVWyHiaIc%2F9Wc9zUvmvXSHw8UksIFwIhALFFkMROSWl9IefzeFW%2BU%2FdLDzJ4%2Fp6Jd42V7MAj6MksKswDCEIQAhoMMzE1MzIxMTg2NTcwIgzqWoqPjiUou%2Bz9waEqqQPFHDHZgQoMeI6%2F%2BvcVUbUKwjlezFGtZwiQN70p9kYy%2BqRHATuxyObkaAq9MfWDpYwSBnVQplAQE3hEqlwFLPwysoLlpkFl8P3%2FGK%2F%2BEpCYA8u6nyYnerIStQ466U0W0wFN7A%2FjpqFMubLvIXDy3CsEe5eRG9DMwXJPkjvV1gCdZ%2Fz7TQ7gsEnpJM8TUKIrZ7fMUbcXSe9mu8cyCfxnjyzp7YRhb8b2DXEMHuf%2FiP%2BWqLm5MVja027c6li3rSUXcv3QaWGQu%2FdeJG84Ei6rvmtPM5WOl6vPzlu9uyCXSmVRbav0614YYnxxhE%2FOvMW6qb8Qx%2Fhn%2B6OhAgTytJuaspt4ZqvVNKYiIq9gD1g76Dhgexc3PBcwF5AbXrUBYKKo9KgGNKSn3arCuE6DLFqR2PY6KFQdacYCgCBVjKkwEkgZ00Hozq6ITjGH6qxgpHCVqU5AqmbrYHgpCK6IqXeDS46twAhiTgv%2FzudMxheyu0PK0eUgJcP202WfD7c4EBVJImoSpDI%2Fpi3s%2FtVQznQIdpRSie87Oap8f0Lu5a7LPzXtaTzrJPJsKZuLnTC9nqbLBjrdAtweqDxu0eUdKQYdZ8C3UeEK%2BWchC81xnGpGVh1Zx7rlAjuZM5J%2BeyaIocjXaEOTUokO8RYn%2BdL85NXCJuL3q7kiB6pu4arbr%2Ff1lZEGRudt6QxCUJMGa4lQbvvSDg%2BIJ1h9%2BMSs6%2B4pwQRopD4yH4IdDzM3MjEcJS4WWnN77Eyeo0yEs%2FrbXbWUL2GWOkeQ%2FH083jvKgqHtmntCBIQ3lnDlFfB8e4jRK%2FxMVje9sKZIWLyAougfFmi6VrSUj0TM5XK167scgWki9%2B%2Bj7FWsFteBmkaFRWaK%2FJ8WfiSNTaIzVfLObOKzzUi0QsDGtyp2U2kmIbeQOxztBV05RnVAQ7FGMr4HdwTYi%2BTJQxBEO4jpHBxyX4jqG7gI9%2FZs%2B9jd%2FCip6ayxAWd5IqCqN5dvzejk7PnhOktdZSC5VUS14YD5v6u7TjHKjK%2BHaRuhSlTJfZHqRFFQzeyw8vGtrdI%3D&X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=ASIAUS2U3PEFNPOAONL3%2F20260116%2Feu-west-2%2Fs3%2Faws4_request&X-Amz-Date=20260116T010756Z&X-Amz-Expires=43200&X-Amz-SignedHeaders=host&X-Amz-Signature=7817785733c54e8f5b0e86fa2f309513f287e71eba9f1dd79f4097d21d412f4d',
-    size: [30, 12, 20],
   },
   {
     name: 'Error Test (Invalid URL)',
