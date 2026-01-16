@@ -37,6 +37,12 @@ export interface ModeChangedEvent {
   camera: THREE.PerspectiveCamera | THREE.OrthographicCamera
 }
 
+export interface ExternalCameraChangedEvent {
+  type: 'externalcamerachange'
+  camera: THREE.PerspectiveCamera | THREE.OrthographicCamera
+  previousCamera: THREE.PerspectiveCamera | THREE.OrthographicCamera
+}
+
 let controlsInstalled = false
 
 const tempVec3A = new THREE.Vector3()
@@ -83,6 +89,10 @@ export class DualCameraControls extends CameraControls {
   private activeMode: CameraMode
   private readonly minOrthoHalfHeight: number
   private readonly updateClock = new THREE.Clock()
+  private externalCamera:
+    | THREE.PerspectiveCamera
+    | THREE.OrthographicCamera
+    | null = null
 
   constructor(
     renderer: THREE.WebGLRenderer,
@@ -179,9 +189,12 @@ export class DualCameraControls extends CameraControls {
    * Switch to the perspective camera while keeping the current framing.
    */
   switchToPerspective(enableTransition = false) {
-    if (this.activeMode === 'perspective') {
+    if (this.activeMode === 'perspective' && !this.externalCamera) {
       return
     }
+
+    // Clear external camera if set
+    this.externalCamera = null
 
     const target = this.getTarget(tempVec3A)
     const position = this.getPosition(tempVec3B)
@@ -219,9 +232,12 @@ export class DualCameraControls extends CameraControls {
    * Switch to the orthographic camera while keeping the current framing.
    */
   switchToOrthographic(enableTransition = false) {
-    if (this.activeMode === 'orthographic') {
+    if (this.activeMode === 'orthographic' && !this.externalCamera) {
       return
     }
+
+    // Clear external camera if set
+    this.externalCamera = null
 
     const target = this.getTarget(tempVec3A)
     const position = this.getPosition(tempVec3B)
@@ -265,6 +281,118 @@ export class DualCameraControls extends CameraControls {
     } else {
       this.switchToPerspective(enableTransition)
     }
+  }
+
+  /**
+   * Returns true if currently using an external camera.
+   */
+  get isUsingExternalCamera(): boolean {
+    return this.externalCamera !== null
+  }
+
+  /**
+   * Sets an external camera to use with the controls.
+   * This allows using a camera created outside of DualCameraControls.
+   * Call `clearExternalCamera()` to return to the internal cameras.
+   */
+  setCamera(
+    camera: THREE.PerspectiveCamera | THREE.OrthographicCamera,
+    target?: Vector3Like,
+    enableTransition = false
+  ) {
+    const previousCamera = this.camera
+    this.externalCamera = camera
+
+    // Update aspect/frustum for the external camera
+    const aspect = resolveAspect(this.renderer, this.domElementRef)
+    if (camera.type === 'PerspectiveCamera') {
+      ;(camera as THREE.PerspectiveCamera).aspect = aspect
+      camera.updateProjectionMatrix()
+    } else if (camera.type === 'OrthographicCamera') {
+      // Maintain the camera's existing frustum proportions but update aspect
+      const ortho = camera as THREE.OrthographicCamera
+      const currentHeight = (ortho.top - ortho.bottom) * 0.5
+      const newHalfWidth = currentHeight * aspect
+      ortho.left = -newHalfWidth
+      ortho.right = newHalfWidth
+      ortho.updateProjectionMatrix()
+    }
+
+    this.camera = camera
+    const mode: CameraMode =
+      camera.type === 'PerspectiveCamera' ? 'perspective' : 'orthographic'
+    this.activeMode = mode
+    this.updateInputBindingsForMode(mode)
+
+    // Set up the camera position and target in the controls
+    const targetVec = toVector3(target, [0, 0, 0], tempVec3A)
+    void this.setLookAt(
+      camera.position.x,
+      camera.position.y,
+      camera.position.z,
+      targetVec.x,
+      targetVec.y,
+      targetVec.z,
+      enableTransition
+    )
+
+    this.dispatchEvent({
+      type: 'externalcamerachange',
+      camera,
+      previousCamera,
+    } satisfies ExternalCameraChangedEvent)
+  }
+
+  /**
+   * Clears the external camera and returns to using the internal cameras.
+   * Will switch to the camera matching the current mode.
+   */
+  clearExternalCamera(enableTransition = false) {
+    if (!this.externalCamera) {
+      return
+    }
+
+    const target = this.getTarget(tempVec3A)
+    const position = this.getPosition(tempVec3B)
+
+    this.externalCamera = null
+
+    // Return to the internal camera matching the current mode
+    const internalCamera =
+      this.activeMode === 'orthographic'
+        ? this.orthographicCamera
+        : this.perspectiveCamera
+
+    internalCamera.position.copy(position)
+    internalCamera.quaternion.copy(this.camera.quaternion)
+    internalCamera.up.copy(this.camera.up)
+
+    const aspect = resolveAspect(this.renderer, this.domElementRef)
+    if (this.activeMode === 'orthographic') {
+      this.updateOrthographicFrustum(position, target, aspect)
+    } else {
+      this.perspectiveCamera.aspect = aspect
+      this.perspectiveCamera.updateProjectionMatrix()
+    }
+
+    this.camera = internalCamera
+
+    void this.setLookAt(
+      position.x,
+      position.y,
+      position.z,
+      target.x,
+      target.y,
+      target.z,
+      enableTransition
+    )
+
+    this.dispatchEvent({
+      type: 'modechange',
+      mode: this.activeMode,
+      previousMode: this.activeMode,
+      camera: internalCamera,
+    } satisfies ModeChangedEvent)
   }
 
   /**

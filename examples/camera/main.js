@@ -32,12 +32,22 @@ const cylinder = ObjectFactory.createCylinder(
 )
 scene.add(cylinder)
 
-const clock = new THREE.Clock()
+// Create an external camera for demonstration
+const externalCamera = new THREE.PerspectiveCamera(
+  90, // Wide FOV
+  window.innerWidth / window.innerHeight,
+  0.1,
+  1000
+)
+externalCamera.position.set(0, 15, 0.1)
+externalCamera.lookAt(0, 0, 0)
+
 const origin = new THREE.Vector3()
 const reusableEuler = new THREE.Euler()
 
 // Camera controls & dual camera support
 const cameraControls = new DualCameraControls(renderer, {
+  /*
   initialTarget: [0, 0, 0],
   perspective: {
     position: [10, 10, 10],
@@ -46,6 +56,7 @@ const cameraControls = new DualCameraControls(renderer, {
   orthographic: {
     size: 20,
   },
+  */
 })
 
 cameraControls.smoothTime = 0.5
@@ -58,45 +69,16 @@ cameraControls.addEventListener('modechange', (event) => {
   updateCameraInfo()
 })
 
+cameraControls.addEventListener('externalcamerachange', (event) => {
+  camera = event.camera
+  updateCamera(event.camera)
+  updateCameraInfo()
+})
+
 window.addEventListener('resize', () => {
   cameraControls.handleResize(window.innerWidth, window.innerHeight)
   camera = cameraControls.activeCamera
-  updateCamera(camera)
 })
-
-let isOrbiting = false
-let orbitBtn = null
-const orbitSettings = {
-  speed: THREE.MathUtils.degToRad(25),
-  polarAngle: THREE.MathUtils.degToRad(55),
-  distance: 15,
-}
-
-function toggleOrbit(enable) {
-  isOrbiting = enable
-
-  if (!orbitBtn) {
-    return
-  }
-
-  if (enable) {
-    cameraControls.stop()
-    cameraControls.distance = orbitSettings.distance
-    cameraControls.polarAngle = orbitSettings.polarAngle
-    orbitBtn.textContent = 'Stop Orbit'
-    orbitBtn.style.background = '#ef4444'
-  } else {
-    orbitBtn.textContent = 'Start Orbit'
-    orbitBtn.style.background = '#374151'
-  }
-}
-
-function stopCameraMotion() {
-  if (isOrbiting) {
-    toggleOrbit(false)
-  }
-  cameraControls.stop()
-}
 
 function moveCameraTo(position, target = origin, enableTransition = true) {
   const destination = position.isVector3
@@ -116,7 +98,6 @@ const controlPanel = UIHelpers.createControlPanel('📷 Camera Controls')
 const frontViewBtn = UIHelpers.createButton(
   'Front View',
   () => {
-    stopCameraMotion()
     moveCameraTo(new THREE.Vector3(0, 5, 15))
   },
   'primary'
@@ -126,7 +107,6 @@ controlPanel.appendChild(frontViewBtn)
 const sideViewBtn = UIHelpers.createButton(
   'Side View',
   () => {
-    stopCameraMotion()
     moveCameraTo(new THREE.Vector3(15, 5, 0))
   },
   'primary'
@@ -136,7 +116,6 @@ controlPanel.appendChild(sideViewBtn)
 const topViewBtn = UIHelpers.createButton(
   'Top View',
   () => {
-    stopCameraMotion()
     moveCameraTo(new THREE.Vector3(0, 20, 0.1))
   },
   'primary'
@@ -146,31 +125,15 @@ controlPanel.appendChild(topViewBtn)
 const isometricBtn = UIHelpers.createButton(
   'Isometric View',
   () => {
-    stopCameraMotion()
     moveCameraTo(new THREE.Vector3(10, 10, 10))
   },
   'primary'
 )
 controlPanel.appendChild(isometricBtn)
 
-// Camera Animation buttons
-orbitBtn = UIHelpers.createButton(
-  'Start Orbit',
-  () => {
-    if (isOrbiting) {
-      toggleOrbit(false)
-    } else {
-      toggleOrbit(true)
-    }
-  },
-  'secondary'
-)
-controlPanel.appendChild(orbitBtn)
-
 const focusBtn = UIHelpers.createButton(
   'Focus on Cube',
   () => {
-    stopCameraMotion()
     const focusOffset = cube.position.clone().add(new THREE.Vector3(0, 5, 8))
     moveCameraTo(focusOffset, cube.position)
   },
@@ -178,10 +141,19 @@ const focusBtn = UIHelpers.createButton(
 )
 controlPanel.appendChild(focusBtn)
 
+const moveTargetBtn = UIHelpers.createButton(
+  'Move Target',
+  () => {
+    const target = new THREE.Vector3(3, 0, 3)
+    moveCameraTo(cameraControls.activeCamera.position, target)
+  },
+  'secondary'
+)
+controlPanel.appendChild(moveTargetBtn)
+
 const resetBtn = UIHelpers.createButton(
   'Reset Camera',
   () => {
-    stopCameraMotion()
     moveCameraTo(new THREE.Vector3(10, 10, 10))
   },
   'secondary'
@@ -192,10 +164,7 @@ controlPanel.appendChild(resetBtn)
 const perspectiveBtn = UIHelpers.createButton(
   'Perspective',
   () => {
-    stopCameraMotion()
     cameraControls.switchToPerspective()
-    camera = cameraControls.activeCamera
-    updateCamera(camera)
     updateCameraInfo()
   },
   'success'
@@ -205,15 +174,35 @@ controlPanel.appendChild(perspectiveBtn)
 const orthographicBtn = UIHelpers.createButton(
   'Orthographic',
   () => {
-    stopCameraMotion()
     cameraControls.switchToOrthographic()
-    camera = cameraControls.activeCamera
-    updateCamera(camera)
     updateCameraInfo()
   },
   'success'
 )
 controlPanel.appendChild(orthographicBtn)
+
+// External Camera buttons
+const externalCameraBtn = UIHelpers.createButton(
+  'Use External Camera',
+  () => {
+    // Update external camera position for a top-down wide view
+    externalCamera.position.set(0, 15, 0.1)
+    cameraControls.setCamera(externalCamera, [0, 0, 0], true)
+    updateCameraInfo()
+  },
+  'warning'
+)
+controlPanel.appendChild(externalCameraBtn)
+
+const clearExternalBtn = UIHelpers.createButton(
+  'Clear External Camera',
+  () => {
+    cameraControls.clearExternalCamera(true)
+    updateCameraInfo()
+  },
+  'warning'
+)
+controlPanel.appendChild(clearExternalBtn)
 
 // Create camera info panel
 const cameraInfoPanel = UIHelpers.createControlPanel(
@@ -226,10 +215,12 @@ cameraInfoPanel.style.fontSize = '12px'
 const cameraPositionDiv = document.createElement('div')
 const cameraRotationDiv = document.createElement('div')
 const cameraTypeDiv = document.createElement('div')
+const externalCameraDiv = document.createElement('div')
 
 cameraInfoPanel.appendChild(cameraPositionDiv)
 cameraInfoPanel.appendChild(cameraRotationDiv)
 cameraInfoPanel.appendChild(cameraTypeDiv)
+cameraInfoPanel.appendChild(externalCameraDiv)
 
 function updateCameraInfo() {
   const activeCamera = cameraControls.activeCamera
@@ -248,6 +239,9 @@ function updateCameraInfo() {
   ).toFixed(0)}°)`
   cameraTypeDiv.textContent = `Type: ${
     activeCamera.isPerspectiveCamera ? 'Perspective' : 'Orthographic'
+  }`
+  externalCameraDiv.textContent = `External: ${
+    cameraControls.isUsingExternalCamera ? 'Yes' : 'No'
   }`
 }
 
@@ -272,4 +266,5 @@ console.log('Camera Example loaded! 📷')
 console.log('- Try different camera positions and animations')
 console.log('- Switch between perspective and orthographic cameras')
 console.log('- DualCameraControls keeps the view consistent between modes')
+console.log('- Use an external camera with setCamera()')
 console.log('- Watch the real-time camera info updates')

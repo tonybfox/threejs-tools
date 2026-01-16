@@ -64,12 +64,10 @@ function init() {
   // Add event listeners for view helper
   viewHelper.addEventListener('animationStart', () => {
     console.log('View helper animation started')
-    updateAnimationButton(true)
   })
 
   viewHelper.addEventListener('animationEnd', () => {
     console.log('View helper animation ended')
-    updateAnimationButton(false)
   })
 
   // Setup controls
@@ -102,7 +100,6 @@ function setupControls() {
       },
       controls,
     })
-    setupViewHelperEvents()
   })
 
   // Size control
@@ -129,7 +126,6 @@ function setupControls() {
       },
       controls,
     })
-    setupViewHelperEvents()
   })
 
   // Offset controls
@@ -156,7 +152,6 @@ function setupControls() {
       },
       controls,
     })
-    setupViewHelperEvents()
   })
 
   const offsetYSlider = document.getElementById('offsetY')
@@ -182,7 +177,6 @@ function setupControls() {
       },
       controls,
     })
-    setupViewHelperEvents()
   })
 
   // Reset camera button
@@ -192,32 +186,6 @@ function setupControls() {
     controls.setTarget(0, 0, 0, true)
     controls.update(0)
   })
-
-  // Animation toggle button
-  const toggleButton = document.getElementById('toggleAnimation')
-  toggleButton.addEventListener('click', () => {
-    // This would stop view helper animation if it was running
-    // For now, we'll just show it's not implemented
-    alert('Animation control not yet implemented in this demo')
-  })
-
-  setupViewHelperEvents()
-}
-
-function setupViewHelperEvents() {
-  viewHelper.addEventListener('animationStart', () => {
-    updateAnimationButton(true)
-  })
-
-  viewHelper.addEventListener('animationEnd', () => {
-    updateAnimationButton(false)
-  })
-}
-
-function updateAnimationButton(isAnimating) {
-  const button = document.getElementById('toggleAnimation')
-  button.disabled = !isAnimating
-  button.textContent = isAnimating ? 'Animating...' : 'Ready'
 }
 
 function animate() {
