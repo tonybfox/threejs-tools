@@ -56,7 +56,6 @@ assetLoader.addEventListener('placeholderCreated', (event) => {
 
 assetLoader.addEventListener('progress', (event) => {
   progressInfo = event
-  console.log(`Loading progress: ${event.percentage.toFixed(2)}%`)
   updateProgressUI()
 })
 
@@ -301,30 +300,76 @@ modelTypeInfo.innerHTML = `
   <strong>Supported formats:</strong><br>
   • GLTF (.gltf, .glb)<br>
   • FBX (.fbx)<br>
-  • OBJ (.obj)
+  • OBJ (.obj)<br>
+  • USD (.usd, .usdz)
 `
 modelSection.appendChild(modelTypeInfo)
 
-const urlInfo = document.createElement('div')
-urlInfo.style.cssText =
-  'font-size: 11px; margin: 15px 0; padding: 10px; background: rgba(239, 68, 68, 0.1); border-radius: 4px; color: rgba(255,255,255,0.7);'
-urlInfo.innerHTML = `
-  <strong>Note:</strong> To test with actual models, you'll need to provide URLs to 3D model files. 
-  The loader supports progress tracking, caching, and placeholder display while loading.
-`
-modelSection.appendChild(urlInfo)
+// Example models array
+const exampleModels = [
+  {
+    name: 'Duck (GLTF)',
+    type: 'gltf',
+    url: 'https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Models/refs/heads/main/2.0/Duck/glTF/Duck.gltf',
+    size: [1, 1, 1],
+  },
+  {
+    name: 'visualconfig (fbx - Large)',
+    type: 'fbx',
+    url: 'https://visualconfig-dev.s3.eu-west-2.amazonaws.com/three-d-files/97e39447-484a-49d9-9505-b2e6aca57832/d98ff541-9d57-4587-81d1-21c336a8ab04.fbx?response-content-disposition=inline&X-Amz-Content-Sha256=UNSIGNED-PAYLOAD&X-Amz-Security-Token=IQoJb3JpZ2luX2VjEHkaCWV1LXdlc3QtMiJIMEYCIQC1sYHjGZsKN8XVvVWyHiaIc%2F9Wc9zUvmvXSHw8UksIFwIhALFFkMROSWl9IefzeFW%2BU%2FdLDzJ4%2Fp6Jd42V7MAj6MksKswDCEIQAhoMMzE1MzIxMTg2NTcwIgzqWoqPjiUou%2Bz9waEqqQPFHDHZgQoMeI6%2F%2BvcVUbUKwjlezFGtZwiQN70p9kYy%2BqRHATuxyObkaAq9MfWDpYwSBnVQplAQE3hEqlwFLPwysoLlpkFl8P3%2FGK%2F%2BEpCYA8u6nyYnerIStQ466U0W0wFN7A%2FjpqFMubLvIXDy3CsEe5eRG9DMwXJPkjvV1gCdZ%2Fz7TQ7gsEnpJM8TUKIrZ7fMUbcXSe9mu8cyCfxnjyzp7YRhb8b2DXEMHuf%2FiP%2BWqLm5MVja027c6li3rSUXcv3QaWGQu%2FdeJG84Ei6rvmtPM5WOl6vPzlu9uyCXSmVRbav0614YYnxxhE%2FOvMW6qb8Qx%2Fhn%2B6OhAgTytJuaspt4ZqvVNKYiIq9gD1g76Dhgexc3PBcwF5AbXrUBYKKo9KgGNKSn3arCuE6DLFqR2PY6KFQdacYCgCBVjKkwEkgZ00Hozq6ITjGH6qxgpHCVqU5AqmbrYHgpCK6IqXeDS46twAhiTgv%2FzudMxheyu0PK0eUgJcP202WfD7c4EBVJImoSpDI%2Fpi3s%2FtVQznQIdpRSie87Oap8f0Lu5a7LPzXtaTzrJPJsKZuLnTC9nqbLBjrdAtweqDxu0eUdKQYdZ8C3UeEK%2BWchC81xnGpGVh1Zx7rlAjuZM5J%2BeyaIocjXaEOTUokO8RYn%2BdL85NXCJuL3q7kiB6pu4arbr%2Ff1lZEGRudt6QxCUJMGa4lQbvvSDg%2BIJ1h9%2BMSs6%2B4pwQRopD4yH4IdDzM3MjEcJS4WWnN77Eyeo0yEs%2FrbXbWUL2GWOkeQ%2FH083jvKgqHtmntCBIQ3lnDlFfB8e4jRK%2FxMVje9sKZIWLyAougfFmi6VrSUj0TM5XK167scgWki9%2B%2Bj7FWsFteBmkaFRWaK%2FJ8WfiSNTaIzVfLObOKzzUi0QsDGtyp2U2kmIbeQOxztBV05RnVAQ7FGMr4HdwTYi%2BTJQxBEO4jpHBxyX4jqG7gI9%2FZs%2B9jd%2FCip6ayxAWd5IqCqN5dvzejk7PnhOktdZSC5VUS14YD5v6u7TjHKjK%2BHaRuhSlTJfZHqRFFQzeyw8vGtrdI%3D&X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=ASIAUS2U3PEFNPOAONL3%2F20260116%2Feu-west-2%2Fs3%2Faws4_request&X-Amz-Date=20260116T010756Z&X-Amz-Expires=43200&X-Amz-SignedHeaders=host&X-Amz-Signature=7817785733c54e8f5b0e86fa2f309513f287e71eba9f1dd79f4097d21d412f4d',
+    size: [30, 12, 20],
+  },
+  {
+    name: 'Error Test (Invalid URL)',
+    type: 'gltf',
+    url: 'https://invalid-url-that-does-not-exist.com/nonexistent.gltf',
+    size: [3, 3, 3],
+  },
+]
 
-const loadRandomBtn = UIHelpers.createButton(
-  'Load GLTF at Random Position',
+// Create dropdown select
+const selectLabel = document.createElement('div')
+selectLabel.textContent = 'Select Model:'
+selectLabel.style.cssText = 'font-size: 12px; margin: 10px 0 5px 0;'
+modelSection.appendChild(selectLabel)
+
+const modelSelect = document.createElement('select')
+modelSelect.style.cssText = `
+  width: 100%;
+  padding: 8px 12px;
+  margin: 5px 0 15px 0;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 6px;
+  color: white;
+  font-size: 14px;
+  cursor: pointer;
+  outline: none;
+`
+exampleModels.forEach((model, index) => {
+  const option = document.createElement('option')
+  option.value = index
+  option.textContent = `${model.name} [${model.type.toUpperCase()}]`
+  option.style.cssText = 'background: #1e293b; color: white;'
+  modelSelect.appendChild(option)
+})
+modelSection.appendChild(modelSelect)
+
+// Load selected model button
+const loadSelectedBtn = UIHelpers.createButton(
+  'Load at Random Position',
   async () => {
+    const selectedIndex = parseInt(modelSelect.value)
+    const selectedModel = exampleModels[selectedIndex]
+
     const randomX = (Math.random() - 0.5) * 20
     const randomZ = (Math.random() - 0.5) * 20
-    updateStatusUI('Loading GLTF asset...')
+    updateStatusUI(`Loading ${selectedModel.name}...`)
 
     const placementHandler = (asset) => {
       latestAsset = asset
       updateStatusUI(
-        `Asset loaded at X: ${randomX.toFixed(1)}, Z: ${randomZ.toFixed(1)}`
+        `${selectedModel.name} loaded at X: ${randomX.toFixed(1)}, Z: ${randomZ.toFixed(1)}`
       )
     }
     const pendingPlacement = {
@@ -335,10 +380,12 @@ const loadRandomBtn = UIHelpers.createButton(
 
     try {
       await assetLoader.load({
-        type: 'gltf',
-        url: 'https://visualconfig-dev.s3.eu-west-2.amazonaws.com/uploads/123e4567-e89b-12d3-a456-426614174003/a682a3c5-98bf-43b2-8993-a100f9d89c63.gltf?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Content-Sha256=UNSIGNED-PAYLOAD&X-Amz-Credential=AKIAUS2U3PEFAUHF2QNI%2F20251008%2Feu-west-2%2Fs3%2Faws4_request&X-Amz-Date=20251008T231453Z&X-Amz-Expires=3600&X-Amz-Signature=7e06d67998ccf950538168d742a90cff1e02f4ce931d7884e90be88dbd3a4ea8&X-Amz-SignedHeaders=host&x-amz-checksum-mode=ENABLED&x-id=GetObject',
-        size: [10, 3, 10],
+        type: selectedModel.type,
+        url: selectedModel.url,
+        size: selectedModel.size,
         enableCaching: true,
+        errorColor: 0xff4444,
+        errorOpacity: 0.6,
       })
     } catch (error) {
       const index = pendingAssetUpdates.indexOf(pendingPlacement)
@@ -351,32 +398,34 @@ const loadRandomBtn = UIHelpers.createButton(
   },
   'primary'
 )
-modelSection.appendChild(loadRandomBtn)
+modelSection.appendChild(loadSelectedBtn)
 
-// Test error state button
-const testErrorBtn = UIHelpers.createButton(
-  'Test Error State',
+// Load at center button
+const loadCenterBtn = UIHelpers.createButton(
+  'Load at Center',
   async () => {
-    const randomX = (Math.random() - 0.5) * 20
-    const randomZ = (Math.random() - 0.5) * 20
-    updateStatusUI('Testing error state...')
+    const selectedIndex = parseInt(modelSelect.value)
+    const selectedModel = exampleModels[selectedIndex]
+
+    updateStatusUI(`Loading ${selectedModel.name}...`)
 
     const placementHandler = (asset) => {
-      // This won't be called on error
+      latestAsset = asset
+      updateStatusUI(`${selectedModel.name} loaded at center`)
     }
     const pendingPlacement = {
-      position: new THREE.Vector3(randomX, 0, randomZ),
+      position: new THREE.Vector3(0, 0, 0),
       onLoad: placementHandler,
     }
     pendingAssetUpdates.push(pendingPlacement)
 
     try {
       await assetLoader.load({
-        type: 'gltf',
-        url: 'https://invalid-url-that-does-not-exist.com/nonexistent.gltf',
-        size: [3, 3, 3],
-        enableCaching: false,
-        errorColor: 0xff4444, // Red color for error
+        type: selectedModel.type,
+        url: selectedModel.url,
+        size: selectedModel.size,
+        enableCaching: true,
+        errorColor: 0xff4444,
         errorOpacity: 0.6,
       })
     } catch (error) {
@@ -384,13 +433,13 @@ const testErrorBtn = UIHelpers.createButton(
       if (index >= 0) {
         pendingAssetUpdates.splice(index, 1)
       }
-      console.log('Error state demonstration - this is expected!')
-      updateStatusUI(`Error state demonstrated: ${error.message}`)
+      console.error('Error loading asset:', error)
+      updateStatusUI(`Error: ${error.message}`)
     }
   },
-  'danger'
+  'secondary'
 )
-modelSection.appendChild(testErrorBtn)
+modelSection.appendChild(loadCenterBtn)
 
 controlPanel.appendChild(modelSection)
 

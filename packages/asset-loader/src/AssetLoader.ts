@@ -2,6 +2,7 @@ import * as THREE from 'three'
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
 import { FBXLoader } from 'three/examples/jsm/loaders/FBXLoader.js'
 import { OBJLoader } from 'three/examples/jsm/loaders/OBJLoader.js'
+import { USDLoader } from 'three/examples/jsm/loaders/USDLoader.js'
 
 // Event types for asset loading
 interface AssetLoaderEventMap {
@@ -12,7 +13,7 @@ interface AssetLoaderEventMap {
   lowResLoaded: { lowRes: THREE.Object3D }
 }
 
-export type AssetType = 'gltf' | 'fbx' | 'obj'
+export type AssetType = 'gltf' | 'fbx' | 'obj' | 'usd' | 'usdz'
 
 export interface AssetLoaderOptions {
   type: AssetType
@@ -31,6 +32,7 @@ export class AssetLoader extends THREE.EventDispatcher<AssetLoaderEventMap> {
   private gltfLoader: GLTFLoader
   private fbxLoader: FBXLoader
   private objLoader: OBJLoader
+  private usdLoader: USDLoader
   private placeholder: THREE.Object3D | null = null
   private loadedAsset: THREE.Object3D | null = null
   private lowResAsset: THREE.Object3D | null = null
@@ -42,6 +44,7 @@ export class AssetLoader extends THREE.EventDispatcher<AssetLoaderEventMap> {
     this.gltfLoader = new GLTFLoader()
     this.fbxLoader = new FBXLoader()
     this.objLoader = new OBJLoader()
+    this.usdLoader = new USDLoader()
   }
 
   /**
@@ -67,6 +70,8 @@ export class AssetLoader extends THREE.EventDispatcher<AssetLoaderEventMap> {
         fillProgress: { value: 0.0 },
         time: { value: 0.0 },
         isError: { value: 0.0 },
+        yMin: { value: -height / 2 },
+        yMax: { value: height / 2 },
       },
       vertexShader: `
         varying vec3 vPosition;
@@ -81,15 +86,17 @@ export class AssetLoader extends THREE.EventDispatcher<AssetLoaderEventMap> {
         uniform float fillProgress;
         uniform float time;
         uniform float isError;
+        uniform float yMin;
+        uniform float yMax;
         varying vec3 vPosition;
         
         void main() {
-          float normalizedY = (vPosition.y + 1.0) / 2.0; // Normalize from -1,1 to 0,1
+          float normalizedY = (vPosition.y - yMin) / (yMax - yMin); // Normalize based on actual geometry bounds
           float alpha = opacity;
           
           // Create fill-up effect
           if (normalizedY > fillProgress) {
-            alpha *= 0.3; // Reduce opacity for unfilled parts
+            alpha *= 0.1; // Reduce opacity for unfilled parts
           }
           
           // Error state effects
@@ -126,6 +133,7 @@ export class AssetLoader extends THREE.EventDispatcher<AssetLoaderEventMap> {
       const material = this.placeholder.material as THREE.ShaderMaterial
       if (material.uniforms && material.uniforms.fillProgress) {
         material.uniforms.fillProgress.value = progress
+        console.log('Placeholder fill progress:', progress)
       }
     }
   }
@@ -239,7 +247,7 @@ export class AssetLoader extends THREE.EventDispatcher<AssetLoaderEventMap> {
       lowResUrl,
       enableCaching = true,
       placeholderColor = 0x4fc3f7,
-      placeholderOpacity = 0.8,
+      placeholderOpacity = 0.4,
       errorColor = 0xff4444,
       errorOpacity = 0.5,
     } = options
@@ -321,7 +329,21 @@ export class AssetLoader extends THREE.EventDispatcher<AssetLoaderEventMap> {
   ): Promise<THREE.Object3D> {
     return new Promise((resolve, reject) => {
       const onProgress = (event: ProgressEvent) => {
-        const percentage = (event.loaded / event.total) * 100
+        console.log('Loading progress event:', event)
+        // Handle cases where loaded > total (compressed content mismatch)
+        // or total is 0 (unknown content length)
+        let percentage = -1 // Default to indeterminate
+
+        // Only calculate percentage if lengthComputable is true AND loaded <= total
+        // This prevents false 100% when server reports compressed size
+        if (
+          event.lengthComputable &&
+          event.total > 0 &&
+          event.loaded <= event.total
+        ) {
+          percentage = (event.loaded / event.total) * 100
+        }
+
         this.dispatchEvent({
           type: 'progress',
           loaded: event.loaded,
@@ -329,8 +351,8 @@ export class AssetLoader extends THREE.EventDispatcher<AssetLoaderEventMap> {
           percentage,
         })
 
-        // Update placeholder fill
-        if (!isLowRes) {
+        // Update placeholder fill only with valid percentage
+        if (!isLowRes && percentage >= 0) {
           this.updatePlaceholder(percentage / 100)
         }
       }
@@ -371,6 +393,19 @@ export class AssetLoader extends THREE.EventDispatcher<AssetLoaderEventMap> {
             (obj) => {
               this.positionAssetAtBottomCenter(obj)
               resolve(obj)
+            },
+            onProgress,
+            onError
+          )
+          break
+
+        case 'usd':
+        case 'usdz':
+          this.usdLoader.load(
+            url,
+            (usd) => {
+              this.positionAssetAtBottomCenter(usd)
+              resolve(usd)
             },
             onProgress,
             onError
