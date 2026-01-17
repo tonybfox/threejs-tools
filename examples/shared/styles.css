@@ -1,0 +1,35 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  background: #0f0f0f;
+  color: #fff;
+  overflow: hidden;
+}
+
+canvas {
+  display: block;
+}
+
+.back-link {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  background: rgba(0, 0, 0, 0.8);
+  color: white;
+  padding: 10px 20px;
+  text-decoration: none;
+  border-radius: 5px;
+  backdrop-filter: blur(10px);
+  z-index: 1000;
+}
+
+.back-link:hover {
+  background: rgba(0, 0, 0, 0.9);
+}
