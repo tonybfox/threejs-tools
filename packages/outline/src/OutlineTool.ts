@@ -332,11 +332,11 @@ export class OutlineTool {
 
     Object.assign(this.options, options)
 
-    if (options.edgeLineWidth !== undefined) {
+    if (options.edgeLineWidth !== undefined && this.lineMaterial) {
       this.lineMaterial.linewidth = options.edgeLineWidth
     }
 
-    if (options.edgeLineColor !== undefined) {
+    if (options.edgeLineColor !== undefined && this.lineMaterial) {
       this.lineMaterial.color.setHex(options.edgeLineColor)
     }
 
@@ -394,7 +394,7 @@ export class OutlineTool {
     )
     const lineGeometry = new LineSegmentsGeometry()
     const positions = edges.attributes.position.array
-    lineGeometry.setPositions(positions)
+    lineGeometry.setPositions(positions as Float32Array)
 
     const edgeLines = new LineSegments2(lineGeometry, this.lineMaterial)
     edgeLines.computeLineDistances()
