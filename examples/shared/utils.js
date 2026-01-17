@@ -324,7 +324,7 @@ export class UIHelpers {
     return button
   }
 
-  static createSlider(min, max, value, onChange, label) {
+  static createSlider(min, max, value, onChange, label, step = null) {
     const container = document.createElement('div')
     container.style.margin = '15px 0'
 
@@ -339,7 +339,7 @@ export class UIHelpers {
     slider.min = min
     slider.max = max
     slider.value = value
-    slider.step = (max - min) / 100
+    slider.step = step !== null ? step : (max - min) / 100
     slider.style.width = '100%'
 
     console.log(slider)
@@ -440,6 +440,65 @@ export class UIHelpers {
 
     container.appendChild(checkbox)
     container.appendChild(labelEl)
+
+    return container
+  }
+
+  static createToggle(label, checked, onChange) {
+    const container = document.createElement('div')
+    Object.assign(container.style, {
+      margin: '15px 0',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      gap: '10px',
+    })
+
+    const labelEl = document.createElement('label')
+    labelEl.textContent = label
+    Object.assign(labelEl.style, {
+      fontSize: '14px',
+      cursor: 'pointer',
+      userSelect: 'none',
+    })
+
+    const toggleSwitch = document.createElement('div')
+    Object.assign(toggleSwitch.style, {
+      position: 'relative',
+      width: '44px',
+      height: '24px',
+      backgroundColor: checked ? '#3b82f6' : '#374151',
+      borderRadius: '12px',
+      cursor: 'pointer',
+      transition: 'background-color 0.2s',
+    })
+
+    const toggleKnob = document.createElement('div')
+    Object.assign(toggleKnob.style, {
+      position: 'absolute',
+      top: '2px',
+      left: checked ? '22px' : '2px',
+      width: '20px',
+      height: '20px',
+      backgroundColor: 'white',
+      borderRadius: '50%',
+      transition: 'left 0.2s',
+    })
+
+    toggleSwitch.appendChild(toggleKnob)
+
+    const toggle = () => {
+      checked = !checked
+      toggleSwitch.style.backgroundColor = checked ? '#3b82f6' : '#374151'
+      toggleKnob.style.left = checked ? '22px' : '2px'
+      if (onChange) onChange(checked)
+    }
+
+    toggleSwitch.addEventListener('click', toggle)
+    labelEl.addEventListener('click', toggle)
+
+    container.appendChild(labelEl)
+    container.appendChild(toggleSwitch)
 
     return container
   }

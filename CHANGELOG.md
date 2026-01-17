@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.0.5
+
+- Outline package added
+- Collada, STL, PLY, and 3MF support added to AssetLoader
+
 ## 1.0.4
 
 - Added northDirection to the CompassOverlay

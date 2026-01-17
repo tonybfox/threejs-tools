@@ -3,6 +3,10 @@ import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
 import { FBXLoader } from 'three/examples/jsm/loaders/FBXLoader.js'
 import { OBJLoader } from 'three/examples/jsm/loaders/OBJLoader.js'
 import { USDLoader } from 'three/examples/jsm/loaders/USDLoader.js'
+import { ColladaLoader } from 'three/examples/jsm/loaders/ColladaLoader.js'
+import { STLLoader } from 'three/examples/jsm/loaders/STLLoader.js'
+import { PLYLoader } from 'three/examples/jsm/loaders/PLYLoader.js'
+import { ThreeMFLoader } from 'three/examples/jsm/loaders/3MFLoader.js'
 
 // Event types for asset loading
 interface AssetLoaderEventMap {
@@ -13,7 +17,16 @@ interface AssetLoaderEventMap {
   lowResLoaded: { lowRes: THREE.Object3D }
 }
 
-export type AssetType = 'gltf' | 'fbx' | 'obj' | 'usd' | 'usdz'
+export type AssetType =
+  | 'gltf'
+  | 'fbx'
+  | 'obj'
+  | 'usd'
+  | 'usdz'
+  | 'dae'
+  | 'stl'
+  | 'ply'
+  | '3mf'
 
 export interface AssetLoaderOptions {
   type: AssetType
@@ -21,6 +34,7 @@ export interface AssetLoaderOptions {
   size?: [number, number, number] // Optional size for placeholder
   lowResUrl?: string // Optional low-res model URL
   enableCaching?: boolean
+  disablePlaceholder?: boolean // Disable placeholder creation even if size is provided
   placeholderColor?: number
   placeholderOpacity?: number
   errorColor?: number // Color to use when loading fails
@@ -33,6 +47,10 @@ export class AssetLoader extends THREE.EventDispatcher<AssetLoaderEventMap> {
   private fbxLoader: FBXLoader
   private objLoader: OBJLoader
   private usdLoader: USDLoader
+  private colladaLoader: ColladaLoader
+  private stlLoader: STLLoader
+  private plyLoader: PLYLoader
+  private threeMFLoader: ThreeMFLoader
   private placeholder: THREE.Object3D | null = null
   private loadedAsset: THREE.Object3D | null = null
   private lowResAsset: THREE.Object3D | null = null
@@ -45,6 +63,10 @@ export class AssetLoader extends THREE.EventDispatcher<AssetLoaderEventMap> {
     this.fbxLoader = new FBXLoader()
     this.objLoader = new OBJLoader()
     this.usdLoader = new USDLoader()
+    this.colladaLoader = new ColladaLoader()
+    this.stlLoader = new STLLoader()
+    this.plyLoader = new PLYLoader()
+    this.threeMFLoader = new ThreeMFLoader()
   }
 
   /**
@@ -245,6 +267,7 @@ export class AssetLoader extends THREE.EventDispatcher<AssetLoaderEventMap> {
       size,
       lowResUrl,
       enableCaching = true,
+      disablePlaceholder = false,
       placeholderColor = 0x4fc3f7,
       placeholderOpacity = 0.4,
       errorColor = 0xff4444,
@@ -271,8 +294,8 @@ export class AssetLoader extends THREE.EventDispatcher<AssetLoaderEventMap> {
     this.errorColor = errorColor
     this.errorOpacity = errorOpacity
 
-    // Create placeholder if size is provided
-    if (size) {
+    // Create placeholder if size is provided and not disabled
+    if (size && !disablePlaceholder) {
       this.placeholder = this.createPlaceholder(
         size,
         placeholderColor,
@@ -404,6 +427,63 @@ export class AssetLoader extends THREE.EventDispatcher<AssetLoaderEventMap> {
             (usd) => {
               this.positionAssetAtBottomCenter(usd)
               resolve(usd)
+            },
+            onProgress,
+            onError
+          )
+          break
+
+        case 'dae':
+          this.colladaLoader.load(
+            url,
+            (collada) => {
+              const scene = collada.scene
+              this.positionAssetAtBottomCenter(scene)
+              resolve(scene)
+            },
+            onProgress,
+            onError
+          )
+          break
+
+        case 'stl':
+          this.stlLoader.load(
+            url,
+            (geometry) => {
+              const material = new THREE.MeshStandardMaterial({
+                color: 0x888888,
+              })
+              const mesh = new THREE.Mesh(geometry, material)
+              this.positionAssetAtBottomCenter(mesh)
+              resolve(mesh)
+            },
+            onProgress,
+            onError
+          )
+          break
+
+        case 'ply':
+          this.plyLoader.load(
+            url,
+            (geometry) => {
+              const material = new THREE.MeshStandardMaterial({
+                vertexColors: true,
+              })
+              const mesh = new THREE.Mesh(geometry, material)
+              this.positionAssetAtBottomCenter(mesh)
+              resolve(mesh)
+            },
+            onProgress,
+            onError
+          )
+          break
+
+        case '3mf':
+          this.threeMFLoader.load(
+            url,
+            (object) => {
+              this.positionAssetAtBottomCenter(object)
+              resolve(object)
             },
             onProgress,
             onError

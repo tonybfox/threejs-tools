@@ -1,0 +1,32 @@
+{
+  "name": "@tonybfox/threejs-tools-outline",
+  "version": "0.1.0",
+  "description": "Three.js outline and edge line visualization tool",
+  "main": "dist/index.js",
+  "module": "dist/index.mjs",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "scripts": {
+    "build": "tsup"
+  },
+  "keywords": [
+    "threejs",
+    "outline",
+    "edges",
+    "wireframe"
+  ],
+  "author": "Tony Fox",
+  "license": "MIT",
+  "peerDependencies": {
+    "three": "^0.170.0"
+  },
+  "devDependencies": {
+    "three": "^0.170.0"
+  }
+}

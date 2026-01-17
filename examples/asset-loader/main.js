@@ -1,5 +1,5 @@
 import * as THREE from 'three'
-import { AssetLoader } from '@tonybfox/threejs-tools'
+import { AssetLoader, OutlineTool } from '@tonybfox/threejs-tools'
 import { SceneSetup, ObjectFactory, UIHelpers } from '../shared/utils.js'
 
 // Scene setup using shared utilities
@@ -11,7 +11,18 @@ const sceneSetup = new SceneSetup({
   antialias: true,
 })
 
-const { scene, camera, renderer, controls } = sceneSetup
+const { scene } = sceneSetup
+
+// Create outline tool
+const outlineTool = new OutlineTool(sceneSetup.renderer, {
+  outlineColor: 0xffffff,
+  edgeLineWidth: 1,
+  edgeLineColor: 0xffffff,
+  edgeThreshold: 45, // Higher threshold = fewer edges detected (better for smooth surfaces)
+  outlineScale: 1.01,
+  enableEdgeLines: true, // Show both edge lines and silhouette
+  enableSilhouette: true,
+})
 
 // Add ground plane
 sceneSetup.addGround(20, 0x1e293b)
@@ -86,6 +97,10 @@ assetLoader.addEventListener('loaded', (event) => {
     placeAtBottomCenter(asset, pending.position)
   }
   scene.add(asset)
+
+  // Add outlines using OutlineTool
+  outlineTool.addObject(asset)
+
   latestAsset = asset
 
   // Remove placeholder after loading
@@ -491,7 +506,7 @@ function customAnimation(deltaTime) {
 
   // Rotate loaded asset if present
   if (latestAsset) {
-    // latestAsset.rotation.y += 0.005
+    latestAsset.rotation.y += 0.005
   }
 
   // Rotate placeholder if present
@@ -499,34 +514,12 @@ function customAnimation(deltaTime) {
     // currentPlaceholder.rotation.y += 0.01
   }
 
+  // Update outlines to follow animated objects
+  outlineTool.update()
+
   // Update placeholder animation (for error state pulsing effect)
   assetLoader.updatePlaceholderAnimation(deltaTime || 0.016)
 }
 
 // Start animation using shared scene setup
 sceneSetup.start(customAnimation)
-
-console.log('Asset Loader Example loaded! 📦')
-console.log('Features:')
-console.log('- Placeholder with shader fill effect')
-console.log('- Progress tracking with events')
-console.log('- Support for GLTF, FBX, and OBJ formats')
-console.log('- Asset caching system')
-console.log('- Optional low-res model loading')
-console.log('')
-console.log('Usage:')
-console.log('1. Create a placeholder to see the loading indicator')
-console.log('2. Animate the fill effect to simulate loading progress')
-console.log('3. Use the "Load GLTF at Random Position" button to spawn assets')
-console.log('')
-console.log('Example code:')
-console.log(`
-const loader = new AssetLoader()
-await loader.load({
-  type: 'gltf',
-  url: '/path/to/model.gltf',
-  size: [3, 3, 3], // Optional placeholder size
-  lowResUrl: '/path/to/lowres.gltf', // Optional low-res version
-  enableCaching: true
-})
-`)
