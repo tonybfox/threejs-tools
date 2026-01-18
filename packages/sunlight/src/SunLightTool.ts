@@ -23,6 +23,11 @@ export interface SunLightToolOptions {
   lightDistance?: number
   shadowCameraSize?: number
   shadowCameraFar?: number
+  enableMoonLight?: boolean
+  minMoonIllumination?: number
+  showMoonHelper?: boolean
+  moonHelperSize?: number
+  moonHelperColor?: number
 }
 
 export interface SunLightState {
@@ -33,6 +38,10 @@ export interface SunLightState {
   solarAltitude: number
   weather: SunLightWeather
   useSystemTime: boolean
+  lunarAzimuth?: number
+  lunarAltitude?: number
+  moonPhase?: number
+  moonIllumination?: number
 }
 
 export interface SunLightToolEvents {
@@ -83,6 +92,7 @@ const TWILIGHT_SUN_COLOR = new THREE.Color(0xff8c5c)
 const TWILIGHT_AMBIENT_COLOR = new THREE.Color(0xffb48a)
 const TWILIGHT_SKY_COLOR = new THREE.Color(0xff9966)
 const TWILIGHT_GROUND_COLOR = new THREE.Color(0x362a24)
+const MOON_COLOR = new THREE.Color(0xb8c5d6)
 
 const toJulian = (date: Date): number => date.valueOf() / DAY_MS - 0.5 + J1970
 const toDays = (date: Date): number => toJulian(date) - J2000
@@ -140,6 +150,74 @@ const computeDayOfYear = (date: Date): number => {
   return Math.floor(diff / (24 * 60 * 60 * 1000))
 }
 
+// Moon calculation functions
+const lunarMeanAnomaly = (days: number): number =>
+  DEG2RAD * (134.963 + 13.064993 * days)
+
+const lunarMeanLongitude = (days: number): number =>
+  DEG2RAD * (218.316 + 13.176396 * days)
+
+const lunarAscendingNode = (days: number): number =>
+  DEG2RAD * (125.044 - 0.052954 * days)
+
+const lunarEclipticLongitude = (
+  meanLongitude: number,
+  meanAnomaly: number,
+  solarMeanAnomaly: number,
+  ascendingNode: number
+): number => {
+  // Simplified calculation with main periodic terms
+  const evection =
+    DEG2RAD *
+    1.274 *
+    Math.sin(2 * meanLongitude - 2 * solarMeanAnomaly - meanAnomaly)
+  const variation =
+    DEG2RAD * 0.658 * Math.sin(2 * meanLongitude - 2 * solarMeanAnomaly)
+  const annualEquation = DEG2RAD * 0.186 * Math.sin(solarMeanAnomaly)
+  return meanLongitude + evection + variation + annualEquation
+}
+
+const lunarEclipticLatitude = (
+  lunarLongitude: number,
+  ascendingNode: number
+): number => {
+  return DEG2RAD * 5.128 * Math.sin(lunarLongitude - ascendingNode)
+}
+
+const lunarAzimuth = (
+  hourAngle: number,
+  latitudeRad: number,
+  declinationRad: number
+): number =>
+  Math.atan2(
+    Math.sin(hourAngle),
+    Math.cos(hourAngle) * Math.sin(latitudeRad) -
+      Math.tan(declinationRad) * Math.cos(latitudeRad)
+  )
+
+const lunarAltitude = (
+  hourAngle: number,
+  latitudeRad: number,
+  declinationRad: number
+): number =>
+  Math.asin(
+    Math.sin(latitudeRad) * Math.sin(declinationRad) +
+      Math.cos(latitudeRad) * Math.cos(declinationRad) * Math.cos(hourAngle)
+  )
+
+const moonPhaseAngle = (
+  lunarLongitude: number,
+  solarLongitude: number
+): number => {
+  const elongation = lunarLongitude - solarLongitude
+  return Math.atan2(Math.sin(elongation), Math.cos(elongation))
+}
+
+const moonIllumination = (phaseAngle: number): number => {
+  // Illumination fraction: 0 = new moon, 1 = full moon
+  return (1 + Math.cos(phaseAngle)) / 2
+}
+
 const buildWeatherPreset = (
   weather: SunLightWeather,
   solarAltitude: number
@@ -148,14 +226,14 @@ const buildWeatherPreset = (
   switch (weather) {
     case 'sunny':
       return {
-        sunIntensity: 1.5 * altitudeFactor,
+        sunIntensity: 2.5 * altitudeFactor,
         sunColor: new THREE.Color(0xfff2cf),
-        ambientIntensity: 0.35 + 0.45 * altitudeFactor,
+        ambientIntensity: 0.25 + 0.45 * altitudeFactor,
         ambientColor: new THREE.Color(0xf5e7cf),
         hemisphereIntensity: 0.4 + 0.4 * altitudeFactor,
         hemisphereSkyColor: new THREE.Color(0xb8d8ff),
         hemisphereGroundColor: new THREE.Color(0xf4d1aa),
-        shadowBias: -0.0005,
+        shadowBias: -0.0001,
       }
     case 'partly-cloudy':
       return {
@@ -166,7 +244,7 @@ const buildWeatherPreset = (
         hemisphereIntensity: 0.5 + 0.3 * altitudeFactor,
         hemisphereSkyColor: new THREE.Color(0xc8d7eb),
         hemisphereGroundColor: new THREE.Color(0xe6d9c2),
-        shadowBias: -0.0003,
+        shadowBias: -0.0001,
       }
     case 'overcast':
       return {
@@ -199,8 +277,11 @@ export class SunLightTool extends THREE.EventDispatcher<SunLightToolEvents> {
   private ambientLight?: THREE.Light
   private hemisphereLight?: THREE.HemisphereLight
   private helper?: THREE.DirectionalLightHelper
+  private moonLight?: THREE.DirectionalLight
+  private moonHelper?: THREE.DirectionalLightHelper
   private createdLight: boolean = false
   private createdHemisphere: boolean = false
+  private createdMoonLight: boolean = false
   private latitude: number
   private longitude: number
   private dayOfYear: number
@@ -212,6 +293,8 @@ export class SunLightTool extends THREE.EventDispatcher<SunLightToolEvents> {
   private lightDistance: number
   private shadowCameraSize: number
   private shadowCameraFar: number
+  private enableMoonLight: boolean
+  private minMoonIllumination: number
   private state: SunLightState
 
   constructor(scene: THREE.Scene, options: SunLightToolOptions = {}) {
@@ -233,6 +316,8 @@ export class SunLightTool extends THREE.EventDispatcher<SunLightToolEvents> {
     this.lightDistance = options.lightDistance ?? 150
     this.shadowCameraSize = options.shadowCameraSize ?? 100
     this.shadowCameraFar = options.shadowCameraFar ?? 600
+    this.enableMoonLight = options.enableMoonLight ?? true
+    this.minMoonIllumination = options.minMoonIllumination ?? 0.1
 
     const existingDirectional = options.light
     this.light =
@@ -263,6 +348,24 @@ export class SunLightTool extends THREE.EventDispatcher<SunLightToolEvents> {
       this.createdHemisphere = true
     }
 
+    if (this.enableMoonLight) {
+      this.moonLight = new THREE.DirectionalLight(MOON_COLOR, 0.0)
+      this.scene.add(this.moonLight)
+      this.moonLight.target.position.set(0, 0, 0)
+      this.scene.add(this.moonLight.target)
+      this.configureShadowMap(this.moonLight)
+      this.createdMoonLight = true
+
+      if (options.showMoonHelper) {
+        this.moonHelper = new THREE.DirectionalLightHelper(
+          this.moonLight,
+          options.moonHelperSize ?? 20,
+          options.moonHelperColor ?? 0xb8c5d6
+        )
+        this.scene.add(this.moonHelper)
+      }
+    }
+
     if (options.showHelper) {
       this.helper = new THREE.DirectionalLightHelper(
         this.light,
@@ -291,6 +394,18 @@ export class SunLightTool extends THREE.EventDispatcher<SunLightToolEvents> {
 
   getHemisphereLight(): THREE.HemisphereLight | undefined {
     return this.hemisphereLight
+  }
+
+  getMoonLight(): THREE.DirectionalLight | undefined {
+    return this.moonLight
+  }
+
+  getMoonPhase(): number | undefined {
+    return this.state.moonPhase
+  }
+
+  getMoonIllumination(): number | undefined {
+    return this.state.moonIllumination
   }
 
   getState(): SunLightState {
@@ -389,6 +504,21 @@ export class SunLightTool extends THREE.EventDispatcher<SunLightToolEvents> {
     const date = this.computeDate(dateOverride)
     const position = this.computeSunPosition(date)
     this.applySunPosition(position, date)
+
+    let moonData:
+      | {
+          azimuth: number
+          altitude: number
+          phase: number
+          illumination: number
+        }
+      | undefined
+
+    if (this.enableMoonLight && this.moonLight) {
+      moonData = this.computeMoonPosition(date)
+      this.applyMoonPosition(moonData)
+    }
+
     this.state = {
       date,
       latitude: this.latitude,
@@ -397,6 +527,10 @@ export class SunLightTool extends THREE.EventDispatcher<SunLightToolEvents> {
       solarAltitude: position.altitude,
       weather: this.weather,
       useSystemTime: this.useSystemTime,
+      lunarAzimuth: moonData?.azimuth,
+      lunarAltitude: moonData?.altitude,
+      moonPhase: moonData?.phase,
+      moonIllumination: moonData?.illumination,
     }
     this.applyWeather(position.altitude)
     this.dispatchEvent({ type: 'stateChanged', state: this.getState() })
@@ -409,10 +543,25 @@ export class SunLightTool extends THREE.EventDispatcher<SunLightToolEvents> {
       this.helper = undefined
     }
 
+    if (this.moonHelper) {
+      this.scene.remove(this.moonHelper)
+      this.moonHelper.dispose()
+      this.moonHelper = undefined
+    }
+
     if (this.createdHemisphere && this.hemisphereLight) {
       this.scene.remove(this.hemisphereLight)
       this.hemisphereLight.dispose()
       this.hemisphereLight = undefined
+    }
+
+    if (this.createdMoonLight && this.moonLight) {
+      this.scene.remove(this.moonLight)
+      if (this.moonLight.shadow?.map) {
+        this.moonLight.shadow.map.dispose()
+      }
+      this.moonLight.dispose()
+      this.moonLight = undefined
     }
 
     if (this.createdLight && this.light) {
@@ -563,7 +712,7 @@ export class SunLightTool extends THREE.EventDispatcher<SunLightToolEvents> {
     )
 
     this.light.intensity = adjustedSunIntensity
-    this.light.visible = adjustedSunIntensity > 0.001
+    this.light.visible = solarAltitude > 0 && adjustedSunIntensity > 0.001
     this.light.color.copy(sunColor)
     this.light.shadow.bias = preset.shadowBias
 
@@ -576,6 +725,110 @@ export class SunLightTool extends THREE.EventDispatcher<SunLightToolEvents> {
       this.hemisphereLight.intensity = adjustedHemisphereIntensity
       this.hemisphereLight.color.copy(skyColor)
       this.hemisphereLight.groundColor.copy(groundColor)
+    }
+  }
+
+  private computeMoonPosition(date: Date): {
+    azimuth: number
+    altitude: number
+    phase: number
+    illumination: number
+  } {
+    const days = toDays(date)
+    const lw = -this.longitude * DEG2RAD
+    const phi = this.latitude * DEG2RAD
+
+    // Get solar position for phase calculation
+    const solarMeanAnom = solarMeanAnomaly(days)
+    const solarLongitude = eclipticLongitude(solarMeanAnom)
+
+    // Moon orbital elements
+    const lunarMeanAnom = lunarMeanAnomaly(days)
+    const lunarMeanLong = lunarMeanLongitude(days)
+    const ascendingNode = lunarAscendingNode(days)
+
+    // Moon ecliptic position
+    const lunarLongitude = lunarEclipticLongitude(
+      lunarMeanLong,
+      lunarMeanAnom,
+      solarMeanAnom,
+      ascendingNode
+    )
+    const lunarLatitude = lunarEclipticLatitude(lunarLongitude, ascendingNode)
+
+    // Convert to equatorial coordinates
+    const e = DEG2RAD * 23.4397 // Earth's axial tilt
+    const decl = Math.asin(
+      Math.sin(lunarLatitude) * Math.cos(e) +
+        Math.cos(lunarLatitude) * Math.sin(e) * Math.sin(lunarLongitude)
+    )
+    const ra = Math.atan2(
+      Math.sin(lunarLongitude) * Math.cos(e) -
+        Math.tan(lunarLatitude) * Math.sin(e),
+      Math.cos(lunarLongitude)
+    )
+
+    // Calculate hour angle and position
+    const sidereal = siderealTime(days, lw)
+    const hourAngle = sidereal - ra
+
+    // Calculate phase
+    const phase = moonPhaseAngle(lunarLongitude, solarLongitude)
+    const illumination = moonIllumination(phase)
+
+    return {
+      azimuth: lunarAzimuth(hourAngle, phi, decl),
+      altitude: lunarAltitude(hourAngle, phi, decl),
+      phase,
+      illumination,
+    }
+  }
+
+  private applyMoonPosition(moonData: {
+    azimuth: number
+    altitude: number
+    phase: number
+    illumination: number
+  }): void {
+    if (!this.moonLight) return
+
+    const radius = this.lightDistance
+    const altitude = moonData.altitude
+    const azimuth = moonData.azimuth
+
+    // Same coordinate mapping as sun
+    const x = -radius * Math.cos(altitude) * Math.sin(azimuth)
+    const y = radius * Math.sin(altitude)
+    const z = radius * Math.cos(altitude) * Math.cos(azimuth)
+
+    this.moonLight.position.set(x, y, z)
+    this.moonLight.target.position.set(0, 0, 0)
+    this.moonLight.target.updateMatrixWorld()
+
+    // Moon is visible when above horizon and sufficiently illuminated
+    const isVisible =
+      altitude > 0 && moonData.illumination >= this.minMoonIllumination
+
+    // Base moonlight intensity (much dimmer than sunlight)
+    // Full moon is approximately 400,000 times dimmer than the sun
+    const baseMoonIntensity = 0.015
+    const weatherFactor =
+      this.weather === 'overcast'
+        ? 0.3
+        : this.weather === 'partly-cloudy'
+          ? 0.7
+          : 1.0
+    const altitudeFactor = Math.max(0, Math.sin(altitude))
+
+    this.moonLight.intensity =
+      baseMoonIntensity * moonData.illumination * weatherFactor * altitudeFactor
+
+    this.moonLight.visible = isVisible
+    this.moonLight.color.copy(MOON_COLOR)
+
+    if (this.moonHelper) {
+      this.moonHelper.update()
+      this.moonHelper.visible = isVisible
     }
   }
 }

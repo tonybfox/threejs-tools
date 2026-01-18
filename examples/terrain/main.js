@@ -160,7 +160,6 @@ widthInput.style.color = 'white'
 widthInput.style.border = '1px solid #444'
 widthInput.style.borderRadius = '4px'
 
-controlPanel.appendChild(widthLabel)
 controlPanel.appendChild(widthInput)
 
 // Depth input

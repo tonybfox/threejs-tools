@@ -95,6 +95,9 @@ const sunLightTool = new SunLightTool(scene, {
   showHelper: true,
   helperSize: 18,
   helperColor: 0xffe08a,
+  showMoonHelper: true,
+  moonHelperSize: 15,
+  moonHelperColor: 0xb8c5d6,
 })
 
 const hemisphereLight = sunLightTool.getHemisphereLight()
@@ -134,12 +137,16 @@ const systemTimeRow = document.createElement('div')
 const altitudeRow = document.createElement('div')
 const azimuthRow = document.createElement('div')
 const weatherRow = document.createElement('div')
+const moonPhaseRow = document.createElement('div')
+const moonAltitudeRow = document.createElement('div')
 
 infoContainer.appendChild(localTimeRow)
 infoContainer.appendChild(systemTimeRow)
 infoContainer.appendChild(altitudeRow)
 infoContainer.appendChild(azimuthRow)
 infoContainer.appendChild(weatherRow)
+infoContainer.appendChild(moonPhaseRow)
+infoContainer.appendChild(moonAltitudeRow)
 
 controlPanel.appendChild(infoContainer)
 
@@ -261,6 +268,38 @@ weatherOptions.forEach((option) => {
 
 controlPanel.appendChild(weatherLabel)
 controlPanel.appendChild(weatherSelect)
+
+const moonHelperContainer = document.createElement('div')
+moonHelperContainer.style.margin = '14px 0'
+
+const moonHelperToggle = document.createElement('input')
+moonHelperToggle.type = 'checkbox'
+moonHelperToggle.id = 'moon-helper-toggle'
+moonHelperToggle.checked = true
+moonHelperToggle.style.marginRight = '8px'
+
+const moonHelperLabel = document.createElement('label')
+moonHelperLabel.htmlFor = 'moon-helper-toggle'
+moonHelperLabel.textContent = '🌙 Show moon helper'
+moonHelperLabel.style.fontSize = '13px'
+
+moonHelperContainer.appendChild(moonHelperToggle)
+moonHelperContainer.appendChild(moonHelperLabel)
+controlPanel.appendChild(moonHelperContainer)
+
+moonHelperToggle.addEventListener('change', (event) => {
+  const moonLight = sunLightTool.getMoonLight()
+  if (moonLight) {
+    const helper = scene.children.find(
+      (child) =>
+        child instanceof THREE.DirectionalLightHelper &&
+        child.light === moonLight
+    )
+    if (helper) {
+      helper.visible = event.target.checked
+    }
+  }
+})
 
 let isSyncingFromTool = false
 let pendingLocationPreset = null
@@ -468,6 +507,34 @@ const updateReadout = (state) => {
     weatherOptions.find((item) => item.value === state.weather)?.label ??
     state.weather
   }`
+
+  if (
+    state.moonIllumination !== undefined &&
+    state.lunarAltitude !== undefined
+  ) {
+    const illuminationPercent = (state.moonIllumination * 100).toFixed(0)
+    const phaseNames = [
+      'New Moon',
+      'Waxing Crescent',
+      'First Quarter',
+      'Waxing Gibbous',
+      'Full Moon',
+      'Waning Gibbous',
+      'Last Quarter',
+      'Waning Crescent',
+    ]
+    const phaseIndex =
+      Math.floor(((state.moonPhase || 0) / (2 * Math.PI) + 0.0625) * 8) % 8
+    const phaseName = phaseNames[phaseIndex < 0 ? phaseIndex + 8 : phaseIndex]
+    const lunarAltitude = radToDeg(state.lunarAltitude).toFixed(1)
+    const isVisible = state.lunarAltitude > 0 && state.moonIllumination >= 0.1
+
+    moonPhaseRow.innerHTML = `<strong>Moon Phase:</strong> ${phaseName} (${illuminationPercent}% illuminated)`
+    moonAltitudeRow.innerHTML = `<strong>Moon Altitude:</strong> ${lunarAltitude}° ${isVisible ? '🌙 visible' : '(below horizon)'}`
+  } else {
+    moonPhaseRow.innerHTML = ''
+    moonAltitudeRow.innerHTML = ''
+  }
 }
 
 const syncControlsFromTool = (state) => {

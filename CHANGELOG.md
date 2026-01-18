@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.6
+
+- Added moon phase to sunlight tool
+
 ## 1.0.5
 
 - Outline package added

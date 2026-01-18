@@ -153,7 +153,7 @@ const formatTimeLabel = (hours) => {
 const radToDeg = (radians) => (radians * 180) / Math.PI
 
 // Create control panel
-const controlPanel = UIHelpers.createControlPanel('🌍 Combined Scene Controls')
+const controlPanel = UIHelpers.createControlPanel('Combined Scene Controls')
 
 // ===== LOCATION INFO SECTION =====
 const locationInfoSection = document.createElement('div')
@@ -168,7 +168,7 @@ Object.assign(locationInfoSection.style, {
 })
 
 const locationInfoTitle = document.createElement('div')
-locationInfoTitle.textContent = '📍 Location'
+locationInfoTitle.textContent = 'Location'
 locationInfoTitle.style.fontWeight = 'bold'
 locationInfoTitle.style.marginBottom = '8px'
 locationInfoTitle.style.fontSize = '14px'
@@ -197,7 +197,7 @@ Object.assign(sunInfoSection.style, {
 })
 
 const sunInfoTitle = document.createElement('div')
-sunInfoTitle.textContent = '☀️ Sun Position'
+sunInfoTitle.textContent = 'Sun Position'
 sunInfoTitle.style.fontWeight = 'bold'
 sunInfoTitle.style.marginBottom = '8px'
 sunInfoTitle.style.fontSize = '14px'
@@ -223,7 +223,7 @@ Object.assign(dateTimeSection.style, {
 })
 
 const dateTimeSectionTitle = document.createElement('div')
-dateTimeSectionTitle.textContent = '🕐 Date & Time Controls'
+dateTimeSectionTitle.textContent = 'Date & Time Controls'
 dateTimeSectionTitle.style.fontWeight = 'bold'
 dateTimeSectionTitle.style.marginBottom = '15px'
 dateTimeSectionTitle.style.fontSize = '14px'
@@ -381,7 +381,7 @@ Object.assign(terrainSection.style, {
 })
 
 const terrainSectionTitle = document.createElement('div')
-terrainSectionTitle.textContent = '🗻 Terrain Controls'
+terrainSectionTitle.textContent = 'Terrain Controls'
 terrainSectionTitle.style.fontWeight = 'bold'
 terrainSectionTitle.style.marginBottom = '15px'
 terrainSectionTitle.style.fontSize = '14px'
@@ -445,7 +445,7 @@ terrainSection.appendChild(depthInput)
 
 // Load Terrain Button
 const loadTerrainBtn = document.createElement('button')
-loadTerrainBtn.textContent = '🔄 Load Terrain'
+loadTerrainBtn.textContent = 'Load Terrain'
 Object.assign(loadTerrainBtn.style, {
   width: '100%',
   padding: '10px',
@@ -472,7 +472,7 @@ loadTerrainBtn.addEventListener('click', async () => {
   currentDepth = parseFloat(depthInput.value)
 
   loadTerrainBtn.disabled = true
-  loadTerrainBtn.textContent = '⏳ Loading...'
+  loadTerrainBtn.textContent = 'Loading...'
 
   try {
     await terrainTool.loadTerrain(
@@ -487,14 +487,14 @@ loadTerrainBtn.addEventListener('click', async () => {
 
     loadTerrainBtn.textContent = '✓ Loaded!'
     setTimeout(() => {
-      loadTerrainBtn.textContent = '🔄 Load Terrain'
+      loadTerrainBtn.textContent = 'Load Terrain'
       loadTerrainBtn.disabled = false
     }, 2000)
   } catch (error) {
     console.error('Error loading terrain:', error)
     loadTerrainBtn.textContent = '❌ Error'
     setTimeout(() => {
-      loadTerrainBtn.textContent = '🔄 Load Terrain'
+      loadTerrainBtn.textContent = 'Load Terrain'
       loadTerrainBtn.disabled = false
     }, 2000)
   }
