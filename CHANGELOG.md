@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.7
+
+- fixed viewHelper with EffectComposer
+
 ## 1.0.6
 
 - Added moon phase to sunlight tool

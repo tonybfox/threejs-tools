@@ -325,9 +325,18 @@ export class ViewHelper extends THREE.EventDispatcher<ViewHelperEventMap> {
         break
     }
 
-    // Store current viewport and autoClear setting
+    // Store renderer state we mutate so we can restore it afterwards.
     renderer.getViewport(this.viewport)
+    const scissor = new THREE.Vector4()
+    renderer.getScissor(scissor)
+    const scissorTest = renderer.getScissorTest()
+    const renderTarget = renderer.getRenderTarget()
+    const activeCubeFace = renderer.getActiveCubeFace()
+    const activeMipmapLevel = renderer.getActiveMipmapLevel()
     const autoClear = renderer.autoClear
+
+    // Ensure we render the helper to the screen/backbuffer.
+    renderer.setRenderTarget(null)
 
     // Set viewport for helper and disable autoClear
     renderer.setViewport(x, y, size, size)
@@ -341,14 +350,16 @@ export class ViewHelper extends THREE.EventDispatcher<ViewHelperEventMap> {
     // Render helper
     renderer.render(this.scene, this.orthoCamera)
     // Restore settings
-    renderer.setScissorTest(false)
-    renderer.autoClear = autoClear
+    renderer.setRenderTarget(renderTarget, activeCubeFace, activeMipmapLevel)
     renderer.setViewport(
       this.viewport.x,
       this.viewport.y,
       this.viewport.z,
       this.viewport.w
     )
+    renderer.setScissor(scissor)
+    renderer.setScissorTest(scissorTest)
+    renderer.autoClear = autoClear
   }
 
   public handleClick(event: PointerEvent): boolean {
