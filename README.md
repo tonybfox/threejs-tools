@@ -2,14 +2,14 @@
 
 A collection of utilities and tools for Three.js development, organized as a monorepo with separate packages for different functionalities. The root `@tonybfox/threejs-tools` package now bundles every tool so you can install a single npm package while still importing submodules (for example `@tonybfox/threejs-tools/camera` or `@tonybfox/threejs-tools/terrain`).
 
-## 📦 Packages
+## Packages
 
 - **[@tonybfox/threejs-camera](./packages/camera/)** - Camera utilities and controls
 - **[@tonybfox/threejs-grid](./packages/grid/)** - Infinite grid component
 - **[@tonybfox/threejs-measurements](./packages/measurements/)** - Measurement tools for 3D scenes
 - **[@tonybfox/threejs-asset-loader](./packages/asset-loader/)** - Universal asset loader with progress tracking and caching
 
-## 🛠️ Prerequisites
+## Prerequisites
 
 Make sure you have the following installed on your system:
 
@@ -22,7 +22,7 @@ If you don't have pnpm installed, you can install it globally:
 npm install -g pnpm
 ```
 
-## 🚀 Installation
+## Installation
 
 1. **Clone the repository:**
 
@@ -39,7 +39,7 @@ npm install -g pnpm
 
    This will install all dependencies for the root workspace and all packages.
 
-## 🔨 Building
+## Building
 
 ### Build the publishable bundle
 
@@ -81,7 +81,7 @@ To clean all build outputs:
 pnpm clean
 ```
 
-## 🎮 Running Examples
+## Running Examples
 
 The project includes interactive examples demonstrating each package's functionality.
 
@@ -113,9 +113,9 @@ pnpm build
 pnpm preview
 ```
 
-## 📁 Examples Overview
+## Examples Overview
 
-### 🔧 Grid Package Example
+### Grid Package Example
 
 - **Location:** `/examples/grid/`
 - **Features:**
@@ -125,7 +125,7 @@ pnpm preview
   - Grid positioning and rotation
 - **Controls:** Use the control panel to modify grid properties
 
-### 📷 Camera Package Example
+### Camera Package Example
 
 - **Location:** `/examples/camera/`
 - **Features:**
@@ -136,7 +136,7 @@ pnpm preview
   - Real-time camera info display
 - **Controls:** Click buttons to change camera views and modes
 
-### 📏 Measurements Package Example
+### Measurements Package Example
 
 - **Location:** `/examples/measurements/`
 - **Features:**
@@ -148,7 +148,7 @@ pnpm preview
   - Interactive labels
 - **Usage:** Select a tool and click in the 3D scene to measure
 
-### 📦 Asset Loader Package Example
+### Asset Loader Package Example
 
 - **Location:** `/examples/asset-loader/`
 - **Features:**
@@ -160,7 +160,76 @@ pnpm preview
   - Event-driven architecture
 - **Usage:** Use the control panel to create placeholders and see the loading system in action
 
-### 🎮 Interactive Features
+### Outline Package Example
+
+- **Location:** `/examples/outline/`
+- **Features:**
+  - Mesh mode with inverted hull + edge lines (no post-processing)
+  - Post-processing mode with ID buffer edge detection
+  - Auto-updating outlines for animated objects
+  - Smart exclusions for helpers and gizmos
+- **Usage:** Toggle outline modes and settings to compare visual styles
+
+### Terrain Package Example
+
+- **Location:** `/examples/terrain/`
+- **Features:**
+  - Real elevation data terrain mesh generation
+  - Configurable resolution and elevation scaling
+  - Optional imagery overlay and demo mode
+  - Loading events for progress feedback
+- **Usage:** Adjust location and terrain settings to update the mesh
+
+### Transform Controls Package Example
+
+- **Location:** `/examples/transform-controls/`
+- **Features:**
+  - Translate, rotate, and scale gizmo controls
+  - Axis and plane constraints
+  - World vs local space modes
+  - Snap support for precise transforms
+- **Usage:** Manipulate objects with the gizmo and toggle modes
+
+### View Helper Package Example
+
+- **Location:** `/examples/view-helper/`
+- **Features:**
+  - Clickable axis gizmo for quick camera reorientation
+  - Configurable size, colors, and labels
+  - Smooth animated transitions
+- **Usage:** Click axis labels to snap the camera to preset views
+
+### Sun Light Package Example
+
+- **Location:** `/examples/sunlight/`
+- **Features:**
+  - Real-time sun position from latitude, longitude, and date
+  - Weather presets for color and intensity
+  - Sunrise/sunset color transitions based on solar altitude
+  - Optional system clock sync for live daylight simulation
+  - Directional light helper and scene objects to show shadows
+- **Usage:** Adjust the control panel to explore lighting scenarios or enable real-time mode
+
+### Compass Package Example
+
+- **Location:** `/examples/compass/`
+- **Features:**
+  - Stylized compass gizmo with heading, latitude, and longitude
+  - Declination slider with live heading updates
+  - Location presets plus manual coordinate entry
+  - Optional dynamic north resolver
+- **Usage:** Move the compass or adjust coordinates to see live updates
+
+### Combined Scene Example
+
+- **Location:** `/examples/combined-scene/`
+- **Features:**
+  - Terrain, sun lighting, and compass overlay in one scene
+  - Optional Mapbox imagery overlay for terrain
+  - Interactive control panel for location and lighting
+- **Usage:** Use the control panel to explore combined tool behavior
+
+### Interactive Features
 
 Each example includes:
 
@@ -170,7 +239,7 @@ Each example includes:
 - **Real-time Updates:** Live parameter adjustment
 - **Performance Monitoring:** Optional FPS and render statistics
 
-### 🛠 Example Development
+### Example Development
 
 #### Shared Utilities
 
@@ -198,7 +267,7 @@ Examples use Vite for development with:
 - Three.js optimization
 - Workspace linking for package imports
 
-## 📦 Publishing to npm
+## Publishing to npm
 
 Steps to publish the unified `threejs-tools` package:
 
@@ -211,7 +280,7 @@ The published package exposes:
 - `@tonybfox/threejs-tools` – combined exports (tree-shakeable)
 - `@tonybfox/threejs-tools/<tool>` – direct submodule imports for each tool (`camera`, `terrain`, `measurements`, etc.)
 
-## 🏗️ Development Workflow
+## Development Workflow
 
 ### Working on packages
 
@@ -234,7 +303,7 @@ The examples use workspace references (`workspace:*`), so your local changes wil
 2. Add a `package.json` with the `@tonybfox/threejs-*` naming convention
 3. The workspace will automatically include it
 
-## 📝 Code Formatting
+## Code Formatting
 
 This project uses Prettier for code formatting:
 
@@ -246,7 +315,7 @@ pnpm format
 pnpm format:check
 ```
 
-## 🏛️ Project Structure
+## Project Structure
 
 ```
 threejs-tools/
@@ -265,7 +334,7 @@ threejs-tools/
 └── tsconfig.json               # TypeScript configuration
 ```
 
-## 🔧 Scripts Reference
+## Scripts Reference
 
 | Script                | Description                            |
 | --------------------- | -------------------------------------- |
@@ -276,7 +345,7 @@ threejs-tools/
 | `pnpm format`         | Format all files with Prettier         |
 | `pnpm format:check`   | Check code formatting                  |
 
-## 🚨 Troubleshooting
+## Troubleshooting
 
 ### Common Issues
 
@@ -292,7 +361,7 @@ threejs-tools/
 - Monitor memory usage with large scenes
 - Use appropriate LOD for complex geometries
 
-## 🤝 Contributing
+## Contributing
 
 1. Fork the repository
 2. Create your feature branch (`git checkout -b feature/amazing-feature`)
@@ -304,11 +373,11 @@ threejs-tools/
 8. Push to the branch (`git push origin feature/amazing-feature`)
 9. Open a Pull Request
 
-## 📄 License
+## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-## 🐛 Issues & Support
+## Issues & Support
 
 If you encounter any issues or have questions:
 
@@ -318,4 +387,4 @@ If you encounter any issues or have questions:
 
 ---
 
-Made with ❤️ for the Three.js community
+Made with love for the Three.js community
