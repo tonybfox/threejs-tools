@@ -1,6 +1,6 @@
 {
   "name": "@tonybfox/threejs-tools",
-  "version": "1.0.6",
+  "version": "1.0.7",
   "description": "A single entry point that bundles all Three.js tools (camera, terrain, measurements, helpers, and more).",
   "private": false,
   "main": "./dist/index.cjs",
